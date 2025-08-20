@@ -1,7 +1,7 @@
 import pygame as pg
 from graph import Graph
 from typing import Tuple, List, Set
-from ghost import Ghost
+from characters import Ghost, PacMan, Direction
 import common
 from random import choice
 
@@ -114,26 +114,49 @@ def main() -> None:
     # For player and enemy movement
     map, graph_nodes = init_map(map_assets)
 
+
+    pacman: PacMan = PacMan(color=pg.Color('yellow'), start_node=574, graph_nodes=graph_nodes)
+
     ghosts: List[Ghost] = [
         Ghost(color=pg.Color('cyan'), current_node=113, target_node=830, map=map),
         Ghost(color=pg.Color('red'), current_node=897, target_node=138, map=map),
-        Ghost(color=pg.Color('yellow'), current_node=922, target_node=497, map=map),
+        Ghost(color=pg.Color('pink'), current_node=922, target_node=497, map=map),
         Ghost(color=pg.Color('orange'), current_node=901, target_node=915, map=map)
     ]
 
     running: bool = True
     while running:
-        # draw_grid(screen, map_assets)
+        draw_grid(screen, map_assets)
 
         if common.DEBUG_MODE:
             draw_map(screen, map)
+        
+        # Smooth PacMan movement
+        if pacman.pixel_pos == pacman.target_pixel_pos:
+            next_node: int = pacman.move_to_next_node()
+            target_pos: Tuple[int, int] = common.node_number_to_cursor_pos(next_node)
+            pacman.target_pixel_pos = (target_pos[0] + common.OFFSET[0], target_pos[1] + common.OFFSET[1])
+
+        pacman_speed = 4
+        dx = pacman.target_pixel_pos[0] - pacman.pixel_pos[0]
+        dy = pacman.target_pixel_pos[1] - pacman.pixel_pos[1]
+        dist = (dx ** 2 + dy ** 2) ** 0.5
+
+        if dist > pacman_speed:
+            pacman.pixel_pos = (pacman.pixel_pos[0] + pacman_speed * dx / dist, pacman.pixel_pos[1] + pacman_speed * dy / dist)
+        else:
+            pacman.pixel_pos = pacman.target_pixel_pos[:]
+
+        pg.draw.circle(screen, pacman.get_color(), (int(pacman.pixel_pos[0]), int(pacman.pixel_pos[1])), 10, 0)
 
         for ghost in ghosts:
+            # Update target node to PacMan's current node
+            if ghost.get_target_node() != pacman.get_current_node():
+                ghost.set_target_node(pacman.get_current_node(), map)
+
             # Only move to next node when ghost has reached its target pixel position
             if ghost.pixel_pos == ghost.target_pixel_pos:
                 new_node: int = ghost.move_to_next_node()
-                if new_node == ghost.target_node:
-                    ghost.set_target_node(choice(list(graph_nodes)), map)
                 target_pos = common.node_number_to_cursor_pos(new_node)
                 ghost.target_pixel_pos = (target_pos[0] + common.OFFSET[0], target_pos[1] + common.OFFSET[1])
 
@@ -160,7 +183,14 @@ def main() -> None:
                 running = False
 
             if event.type == pg.KEYDOWN:
-                pass
+                if event.key == pg.K_UP:
+                    pacman.set_direction(Direction.UP)
+                elif event.key == pg.K_DOWN:
+                    pacman.set_direction(Direction.DOWN)
+                elif event.key == pg.K_LEFT:
+                    pacman.set_direction(Direction.LEFT)
+                elif event.key == pg.K_RIGHT:
+                    pacman.set_direction(Direction.RIGHT)
 
         if common.DEBUG_MODE:
             pg.display.set_caption(f'PacMan (FPS: {clock.get_fps():.0f})')
