@@ -43,7 +43,6 @@ def draw_map(screen, game_map):
 
 def draw_path(screen, path, color: pg.Color):
     for i in range(len(path)):
-        draw_node(screen, color, path[i])
         if i < len(path)-1:
             position = common.node_number_to_cursor_pos(path[i])
             x_n = path[i+1] % common.GRPH_SIZE[0]
@@ -118,16 +117,15 @@ def main() -> None:
     pacman: PacMan = PacMan(color=pg.Color('yellow'), start_node=574, graph_nodes=graph_nodes)
 
     ghosts: List[Ghost] = [
-        Ghost(color=pg.Color('cyan'), current_node=113, target_node=830, map=map),
-        Ghost(color=pg.Color('red'), current_node=897, target_node=138, map=map),
-        Ghost(color=pg.Color('pink'), current_node=922, target_node=497, map=map),
-        Ghost(color=pg.Color('orange'), current_node=901, target_node=915, map=map)
+        Ghost(name='Blinky', color=pg.Color('red'), current_node=113),
+        Ghost(name='Pinky', color=pg.Color('pink'), current_node=897),
+        # Ghost(name='Inky', color=pg.Color('cyan'), current_node=922),
+        # Ghost(name='Clyde', color=pg.Color('orange'), current_node=901)
     ]
 
     running: bool = True
     while running:
         draw_grid(screen, map_assets)
-
         if common.DEBUG_MODE:
             draw_map(screen, map)
         
@@ -150,9 +148,40 @@ def main() -> None:
         pg.draw.circle(screen, pacman.get_color(), (int(pacman.pixel_pos[0]), int(pacman.pixel_pos[1])), 10, 0)
 
         for ghost in ghosts:
-            # Update target node to PacMan's current node
-            if ghost.get_target_node() != pacman.get_current_node():
-                ghost.set_target_node(pacman.get_current_node(), map)
+            # Targeting PacMan directly
+            if ghost.name == 'Blinky':
+                if ghost.get_target_node() != pacman.get_current_node():
+                    ghost.set_target_node(pacman.get_current_node(), map)
+            # Targeting PacMan from the front (two nodes ahead)
+            if ghost.name == 'Pinky':
+                pacman_node: int = pacman.get_current_node()
+                ignored_nodes: Set[int] = set()
+
+                dx = ghost.pixel_pos[0] - pacman.pixel_pos[0]
+                dy = ghost.pixel_pos[1] - pacman.pixel_pos[1]
+                dist_to_pacman = (dx ** 2 + dy ** 2) ** 0.5
+                
+                # If the distance to pacman is greater than some amount,
+                # then ignore some nodes during pathfinding to ambush in
+                # front of pacman instead of directly behind. Else, if
+                # Pinky is close to pacman, just go straight for it.
+                if dist_to_pacman > 100:
+                    if pacman.direction == Direction.UP:
+                        # Ignore the node directly below PacMan when pathfinding
+                        ignored_nodes.add(pacman_node + (common.GRPH_SIZE[0]))
+                    elif pacman.direction == Direction.DOWN:
+                        # Ignore the node directly above PacMan when pathfinding
+                        ignored_nodes.add(pacman_node - (common.GRPH_SIZE[0]))
+                    elif pacman.direction == Direction.LEFT:
+                        # Ignore the node directly to the right of PacMan when pathfinding
+                        ignored_nodes.add(pacman_node + 1)
+                    elif pacman.direction == Direction.RIGHT:
+                        # Ignore the node directly to the right of PacMan when pathfinding
+                        ignored_nodes.add(pacman_node - 1)
+                
+                if ghost.get_target_node() != pacman.get_current_node():
+                    ghost.set_target_node(pacman.get_current_node(), map, ignored_nodes=ignored_nodes)
+                    ignored_nodes.clear()  # Clear ignored nodes after setting target
 
             # Only move to next node when ghost has reached its target pixel position
             if ghost.pixel_pos == ghost.target_pixel_pos:

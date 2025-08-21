@@ -41,13 +41,19 @@ class Graph:
         return self.adj_list[node]
 
 
-    def BFS(self, start_node: int, end_node: int) -> List[int]:
+    def BFS(self, start_node: int, end_node: int, ignored_nodes: Set[int] = set()) -> List[int]:
+        # If start or end nodes are in the ignored list, no path is possible
+        if start_node in ignored_nodes or end_node in ignored_nodes:
+            return []
+        
         path: List[int] = []
         distance: Dict[int, float] = {}
         previous: Dict[int, int | None] = {}
         Q: Set[int] = set()
 
         for vertex in self.adj_list.keys():
+            if vertex in ignored_nodes:
+                continue  # Skip ignored nodes entirely
             distance[vertex] = float('inf')
             previous[vertex] = None
             Q.add(vertex)
@@ -69,6 +75,10 @@ class Graph:
                 Q.remove(u)
 
                 for v in self.adj_list[u]:
+                    if v in ignored_nodes:
+                        continue  # Skip neighbors that are ignored
+                    if v not in Q:
+                        continue  # Skip if already processed
                     alt: float = distance[u] + 1
                     if alt < distance[v]:
                         distance[v] = alt

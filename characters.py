@@ -1,4 +1,4 @@
-from typing import List, Tuple, Set
+from typing import List, Set
 from graph import Graph
 from pygame import Color
 from enum import Enum
@@ -19,7 +19,7 @@ class PacMan:
         self.graph_nodes: Set[int] = graph_nodes
 
         self.direction: Direction = Direction.NONE
-        
+
         node_pos = common.node_number_to_cursor_pos(self.current_node)
         self.pixel_pos = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
         self.target_pixel_pos = self.pixel_pos[:]
@@ -56,15 +56,18 @@ class PacMan:
         return self.current_node
 
 class Ghost:
-    def __init__(self, color: Color, current_node: int, target_node: int, map: Graph):
+    def __init__(self, name: str, color: Color, current_node: int):
+        self.name: str = name
         self.color: Color = color
         self.current_node: int = current_node
-        self.target_node: int = target_node
-        self.path: List[int] = map.BFS(self.current_node, self.target_node)
+        self.target_node: int | None = None
+        self.path: List[int] | None = []
+        self.ignore_nodes_relative_to_target: List[int] = []
 
         node_pos = common.node_number_to_cursor_pos(self.current_node)
         self.pixel_pos = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
         self.target_pixel_pos = self.pixel_pos[:]
+
 
     def get_color(self) -> Color:
         return self.color
@@ -72,14 +75,14 @@ class Ghost:
     def get_current_node(self) -> int:
         return self.current_node
     
-    def get_target_node(self) -> int:
+    def get_target_node(self) -> int | None:
         return self.target_node
     
-    def set_target_node(self, new_target: int, map: Graph):
+    def set_target_node(self, new_target: int, map: Graph, ignored_nodes: Set[int] = set()):
         self.target_node = new_target
-        self.path = map.BFS(self.current_node, self.target_node)
+        self.path = map.BFS(self.current_node, self.target_node, ignored_nodes)
 
-    def get_path(self) -> List[int]:
+    def get_path(self) -> List[int] | None:
         return self.path
 
     def move_to_next_node(self) -> int:
