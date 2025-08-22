@@ -2,6 +2,8 @@ from typing import List, Set
 from graph import Graph
 from pygame import Color
 from enum import Enum
+import pygame as pg
+import assets
 
 import common
 
@@ -11,6 +13,12 @@ class Direction(Enum):
     DOWN = 'down'
     LEFT = 'left'
     RIGHT = 'right'
+
+class GhostName(Enum):
+    BLINKY = 'Blinky'
+    PINKY = 'Pinky'
+    INKY = 'Inky'
+    CLYDE = 'Clyde'
 
 class PacMan:
     def __init__(self, color: Color, start_node: int, graph_nodes: Set[int]):
@@ -56,21 +64,65 @@ class PacMan:
         return self.current_node
 
 class Ghost:
-    def __init__(self, name: str, color: Color, current_node: int):
-        self.name: str = name
-        self.color: Color = color
+    def __init__(self, name: GhostName, current_node: int):
+        self.name: GhostName = name
         self.current_node: int = current_node
         self.target_node: int | None = None
         self.path: List[int] | None = []
-        self.ignore_nodes_relative_to_target: List[int] = []
 
         node_pos = common.node_number_to_cursor_pos(self.current_node)
         self.pixel_pos = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
         self.target_pixel_pos = self.pixel_pos[:]
 
 
-    def get_color(self) -> Color:
-        return self.color
+        self.scale: float = 1.5
+
+        self.animation_speed: int = 5 # Every so and so frames
+        self.animation_frame: int = 0
+
+        self.eye_direction: Direction = Direction.NONE
+        self.eye_animation: List[pg.Surface] = [
+            common.load_asset(assets.EYE1, scale=self.scale),
+            common.load_asset(assets.EYE2, scale=self.scale),
+            common.load_asset(assets.EYE3, scale=self.scale),
+            common.load_asset(assets.EYE4, scale=self.scale),
+        ]
+
+        self.body_animation_frame: int = 0
+        self.body_animation: List[pg.Surface] = []
+        match self.name:
+            case GhostName.BLINKY:
+                self.color = pg.Color('red')
+                self.body_animation = [
+                    common.load_asset(assets.BLINKY1, scale=self.scale),
+                    common.load_asset(assets.BLINKY2, scale=self.scale),
+                ]
+            case GhostName.PINKY:
+                self.color = pg.Color('pink')
+                self.body_animation = [
+                    common.load_asset(assets.PINKY1, scale=self.scale),
+                    common.load_asset(assets.PINKY2, scale=self.scale),
+                ]
+            case GhostName.INKY:
+                self.color = pg.Color('cyan')
+                self.body_animation = [
+                    common.load_asset(assets.INKY1, scale=self.scale),
+                    common.load_asset(assets.INKY2, scale=self.scale),
+                ]
+            case GhostName.CLYDE:
+                self.color = pg.Color('orange')
+                self.body_animation = [
+                    common.load_asset(assets.CLYDE1, scale=self.scale),
+                    common.load_asset(assets.CLYDE2, scale=self.scale),
+                ]
+
+    def get_body_image(self) -> pg.Surface:
+        return self.body_animation[self.body_animation_frame]
+
+    def animate(self):
+        self.animation_frame = (self.animation_frame + 1) % self.animation_speed
+        if self.animation_frame == 0:
+            self.body_animation_frame = (self.body_animation_frame + 1) % len(self.body_animation)
 
     def get_current_node(self) -> int:
         return self.current_node
@@ -81,6 +133,9 @@ class Ghost:
     def set_target_node(self, new_target: int, map: Graph, ignored_nodes: Set[int] = set()):
         self.target_node = new_target
         self.path = map.BFS(self.current_node, self.target_node, ignored_nodes)
+    
+    def get_color(self) -> Color:
+        return self.color
 
     def get_path(self) -> List[int] | None:
         return self.path

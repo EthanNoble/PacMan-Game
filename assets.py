@@ -2,6 +2,26 @@ from typing import List
 
 DIR: str = 'images/walls/'
 DIR2: str = 'images/pellets/'
+DIR3: str = 'images/characters/'
+
+# CHARACTERS
+BLINKY1: str = DIR3 + 'blinky1.png'
+BLINKY2: str = DIR3 + 'blinky2.png'
+
+PINKY1: str = DIR3 + 'pinky1.png'
+PINKY2: str = DIR3 + 'pinky2.png'
+
+INKY1: str = DIR3 + 'inky1.png'
+INKY2: str = DIR3 + 'inky2.png'
+
+CLYDE1: str = DIR3 + 'clyde1.png'
+CLYDE2: str = DIR3 + 'clyde2.png'
+
+EYE1: str = DIR3 + 'eyes1.png'
+EYE2: str = DIR3 + 'eyes2.png'
+EYE3: str = DIR3 + 'eyes3.png'
+EYE4: str = DIR3 + 'eyes4.png'
+
 
 # PELLETS
 PELLET: str = DIR2 + 'small_pellet.jpg'
