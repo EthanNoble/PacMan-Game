@@ -1,4 +1,4 @@
-from typing import List, Set
+from typing import List, Set, Tuple
 from graph import Graph
 from pygame import Color
 from enum import Enum
@@ -68,56 +68,104 @@ class Ghost:
         self.name: GhostName = name
         self.current_node: int = current_node
         self.target_node: int | None = None
+        self.direction: Direction = Direction.NONE
         self.path: List[int] | None = []
 
         node_pos = common.node_number_to_cursor_pos(self.current_node)
         self.pixel_pos = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
         self.target_pixel_pos = self.pixel_pos[:]
 
-
-        self.scale: float = 1.5
-
         self.animation_speed: int = 5 # Every so and so frames
         self.animation_frame: int = 0
 
-        self.eye_direction: Direction = Direction.NONE
-        self.eye_animation: List[pg.Surface] = [
-            common.load_asset(assets.EYE1, scale=self.scale),
-            common.load_asset(assets.EYE2, scale=self.scale),
-            common.load_asset(assets.EYE3, scale=self.scale),
-            common.load_asset(assets.EYE4, scale=self.scale),
-        ]
-
+        self.scale: float = 1.5
         self.body_animation_frame: int = 0
-        self.body_animation: List[pg.Surface] = []
+        self.body_animation: List[List[pg.Surface]] = []
         match self.name:
             case GhostName.BLINKY:
                 self.color = pg.Color('red')
                 self.body_animation = [
-                    common.load_asset(assets.BLINKY1, scale=self.scale),
-                    common.load_asset(assets.BLINKY2, scale=self.scale),
+                    [
+                        common.load_asset(assets.BLINKY1_RIGHT, scale=self.scale),
+                        common.load_asset(assets.BLINKY1_DOWN, scale=self.scale),
+                        common.load_asset(assets.BLINKY1_LEFT, scale=self.scale),
+                        common.load_asset(assets.BLINKY1_UP, scale=self.scale),
+                    ],
+                    [
+                        common.load_asset(assets.BLINKY2_RIGHT, scale=self.scale),
+                        common.load_asset(assets.BLINKY2_DOWN, scale=self.scale),
+                        common.load_asset(assets.BLINKY2_LEFT, scale=self.scale),
+                        common.load_asset(assets.BLINKY2_UP, scale=self.scale),
+                    ]
                 ]
             case GhostName.PINKY:
                 self.color = pg.Color('pink')
                 self.body_animation = [
-                    common.load_asset(assets.PINKY1, scale=self.scale),
-                    common.load_asset(assets.PINKY2, scale=self.scale),
+                    [
+                        common.load_asset(assets.PINKY1_RIGHT, scale=self.scale),
+                        common.load_asset(assets.PINKY1_DOWN, scale=self.scale),
+                        common.load_asset(assets.PINKY1_LEFT, scale=self.scale),
+                        common.load_asset(assets.PINKY1_UP, scale=self.scale),
+                    ],
+                    [
+                        common.load_asset(assets.PINKY2_RIGHT, scale=self.scale),
+                        common.load_asset(assets.PINKY2_DOWN, scale=self.scale),
+                        common.load_asset(assets.PINKY2_LEFT, scale=self.scale),
+                        common.load_asset(assets.PINKY2_UP, scale=self.scale),
+                    ]
                 ]
             case GhostName.INKY:
                 self.color = pg.Color('cyan')
                 self.body_animation = [
-                    common.load_asset(assets.INKY1, scale=self.scale),
-                    common.load_asset(assets.INKY2, scale=self.scale),
+                    [
+                        common.load_asset(assets.INKY1_RIGHT, scale=self.scale),
+                        common.load_asset(assets.INKY1_DOWN, scale=self.scale),
+                        common.load_asset(assets.INKY1_LEFT, scale=self.scale),
+                        common.load_asset(assets.INKY1_UP, scale=self.scale),
+                    ],
+                    [
+                        common.load_asset(assets.INKY2_RIGHT, scale=self.scale),
+                        common.load_asset(assets.INKY2_DOWN, scale=self.scale),
+                        common.load_asset(assets.INKY2_LEFT, scale=self.scale),
+                        common.load_asset(assets.INKY2_UP, scale=self.scale),
+                    ]
                 ]
             case GhostName.CLYDE:
                 self.color = pg.Color('orange')
                 self.body_animation = [
-                    common.load_asset(assets.CLYDE1, scale=self.scale),
-                    common.load_asset(assets.CLYDE2, scale=self.scale),
+                    [
+                        common.load_asset(assets.CLYDE1_RIGHT, scale=self.scale),
+                        common.load_asset(assets.CLYDE1_DOWN, scale=self.scale),
+                        common.load_asset(assets.CLYDE1_LEFT, scale=self.scale),
+                        common.load_asset(assets.CLYDE1_UP, scale=self.scale),
+                    ],
+                    [
+                        common.load_asset(assets.CLYDE2_RIGHT, scale=self.scale),
+                        common.load_asset(assets.CLYDE2_DOWN, scale=self.scale),
+                        common.load_asset(assets.CLYDE2_LEFT, scale=self.scale),
+                        common.load_asset(assets.CLYDE2_UP, scale=self.scale),
+                    ]
                 ]
+    def render(self, screen: pg.Surface):
+        # Body
+        body_position: Tuple[int, int] = (int(self.pixel_pos[0] - common.OFFSET[0]*self.scale), int(self.pixel_pos[1] - common.OFFSET[1]*self.scale))
+        common.place_image(screen, self.get_body_image(), body_position)
 
     def get_body_image(self) -> pg.Surface:
-        return self.body_animation[self.body_animation_frame]
+        return self.body_animation[self.body_animation_frame][self.direction_to_index()]
+    
+    def direction_to_index(self) -> int:
+        match self.direction:
+            case Direction.UP:
+                return 3
+            case Direction.DOWN:
+                return 1
+            case Direction.LEFT:
+                return 2
+            case Direction.RIGHT:
+                return 0
+            case _:
+                return 0
 
     def animate(self):
         self.animation_frame = (self.animation_frame + 1) % self.animation_speed
@@ -133,6 +181,8 @@ class Ghost:
     def set_target_node(self, new_target: int, map: Graph, ignored_nodes: Set[int] = set()):
         self.target_node = new_target
         self.path = map.BFS(self.current_node, self.target_node, ignored_nodes)
+        if len(self.path) == 0:
+            self.path = map.BFS(self.current_node, self.target_node) # Retry without ignored nodes
     
     def get_color(self) -> Color:
         return self.color

@@ -9,6 +9,7 @@ NODE_SIZE = (26, 26)
 OFFSET = (NODE_SIZE[0]//2, NODE_SIZE[1]//2)
 
 DEBUG_MODE = True
+SHOW_GRID_LINES = False
 DEBUG_GRAPH_NODES = False
 
 def node_number_to_cursor_pos(node_number: int) -> Tuple[int, int]:
@@ -17,15 +18,15 @@ def node_number_to_cursor_pos(node_number: int) -> Tuple[int, int]:
     return node_x, node_y
 
 def load_asset(asset_path: str = '', scale: float = 1.0) -> pg.Surface:
-    asset_image = pg.image.load(asset_path)
-    scaled_image = pg.transform.scale(asset_image, (int(NODE_SIZE[0] * scale), int(NODE_SIZE[1] * scale)))
+    asset_image: pg.Surface = pg.image.load(asset_path)
+
+    ratio: float = asset_image.get_height() / asset_image.get_width()
+    width: int = int(NODE_SIZE[0] * scale)
+    height: int = int(ratio * NODE_SIZE[1] * scale)
+
+    scaled_image: pg.Surface = pg.transform.scale(asset_image, (width, height))
     return scaled_image
 
-def place_image(screen: pg.Surface, image: pg.Surface | None, position: Tuple[int, int], scale: float = 1.0) -> None:
+def place_image(screen: pg.Surface, image: pg.Surface | None, position: Tuple[int, int]) -> None:
     if image:
-        if scale > 1:
-            scaled_image = pg.transform.scale(image, (int(NODE_SIZE[0] * scale), int(NODE_SIZE[1] * scale)))
-        else:
-            scaled_image = image
-
-        screen.blit(scaled_image, (position[0], position[1]))
+        screen.blit(image, (position[0], position[1]))

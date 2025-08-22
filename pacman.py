@@ -1,6 +1,6 @@
 import pygame as pg
 from graph import Graph
-from typing import Tuple, List, Set
+from typing import Tuple, List, Set, Dict
 from characters import Ghost, PacMan, Direction, GhostName
 import common
 
@@ -67,7 +67,7 @@ def draw_grid(screen: pg.Surface, map_assets: List[Tuple[pg.Surface | None, bool
         if map_assets[i][0]:
             common.place_image(screen, map_assets[i][0], position)
     
-    if common.DEBUG_MODE:
+    if common.SHOW_GRID_LINES:
         for i in range(common.GRPH_SIZE[0]+1):
             for j in range(common.GRPH_SIZE[1]+1):
                 pg.draw.line(screen, pg.Color('gray33'), (i*common.NODE_SIZE[0], j*common.NODE_SIZE[1]), (i*common.NODE_SIZE[0]+common.NODE_SIZE[0], j*common.NODE_SIZE[1]), 1)
@@ -112,12 +112,12 @@ def main() -> None:
 
     pacman: PacMan = PacMan(color=pg.Color('yellow'), start_node=574, graph_nodes=graph_nodes)
 
-    ghosts: List[Ghost] = [
-        Ghost(name=GhostName.BLINKY, current_node=113),
-        Ghost(name=GhostName.PINKY, current_node=897),
-        # Ghost(name=GhostName.INKY, current_node=922),
-        # Ghost(name=GhostName.CLYDE, current_node=901)
-    ]
+    ghosts: Dict[str, Ghost] = {
+        'Blinky': Ghost(name=GhostName.BLINKY, current_node=113),
+        'Pinky': Ghost(name=GhostName.PINKY, current_node=897),
+        'Inky': Ghost(name=GhostName.INKY, current_node=138),
+        'Clyde': Ghost(name=GhostName.CLYDE, current_node=922)
+    }
 
     running: bool = True
     while running:
@@ -143,15 +143,31 @@ def main() -> None:
 
         pg.draw.circle(screen, pacman.get_color(), (int(pacman.pixel_pos[0]), int(pacman.pixel_pos[1])), 10, 0)
 
-        for ghost in ghosts:
+        for ghost in ghosts.values():
+            blinky_node: int = ghosts['Blinky'].get_current_node() if ghosts['Blinky'] else -1
+            pinky_node: int = ghosts['Pinky'].get_current_node() if ghosts['Pinky'] else -1
+            inky_node: int = ghosts['Inky'].get_current_node() if ghosts['Inky'] else -1
+            clyde_node: int = ghosts['Clyde'].get_current_node() if ghosts['Clyde'] else -1
+
             # Targeting PacMan directly
             if ghost.name == GhostName.BLINKY:
                 if ghost.get_target_node() != pacman.get_current_node():
-                    ghost.set_target_node(pacman.get_current_node(), map)
+                    ignored_nodes: Set[int] = {pinky_node, inky_node, clyde_node}
+                    ghost.set_target_node(pacman.get_current_node(), map, ignored_nodes)
+
+            elif ghost.name == GhostName.INKY:
+                if ghost.get_target_node() != pacman.get_current_node():
+                    ignored_nodes: Set[int] = {blinky_node, pinky_node, clyde_node}
+                    ghost.set_target_node(pacman.get_current_node(), map, ignored_nodes)
+
+            elif ghost.name == GhostName.CLYDE:
+                if ghost.get_target_node() != pacman.get_current_node():
+                    ignored_nodes: Set[int] = {blinky_node, pinky_node, inky_node}
+                    ghost.set_target_node(pacman.get_current_node(), map, ignored_nodes)
             # Targeting PacMan from the front (two nodes ahead)
-            if ghost.name == GhostName.PINKY:
+            elif ghost.name == GhostName.PINKY:
                 pacman_node: int = pacman.get_current_node()
-                ignored_nodes: Set[int] = set()
+                ignored_nodes: Set[int] = {blinky_node, inky_node, clyde_node}
 
                 dx = ghost.pixel_pos[0] - pacman.pixel_pos[0]
                 dy = ghost.pixel_pos[1] - pacman.pixel_pos[1]
@@ -193,16 +209,22 @@ def main() -> None:
             dy = ghost.target_pixel_pos[1] - ghost.pixel_pos[1]
             dist = (dx ** 2 + dy ** 2) ** 0.5
 
+            # Determine ghost's direction
+            if dx > 0:
+                ghost.direction = Direction.RIGHT
+            elif dx < 0:
+                ghost.direction = Direction.LEFT
+            elif dy > 0:
+                ghost.direction = Direction.DOWN
+            elif dy < 0:
+                ghost.direction = Direction.UP
+
             if dist > speed:
                 ghost.pixel_pos = (ghost.pixel_pos[0] + speed * dx / dist, ghost.pixel_pos[1] + speed * dy / dist)
             else:
                 ghost.pixel_pos = ghost.target_pixel_pos[:]
 
-            # pg.draw.circle(screen, pg.Color('red'), (int(ghost.pixel_pos[0]), int(ghost.pixel_pos[1])), 10, 0)
-            common.place_image(
-                screen,
-                ghost.get_body_image(),
-                (int(ghost.pixel_pos[0] - common.OFFSET[0]*ghost.scale), int(ghost.pixel_pos[1] - common.OFFSET[1]*ghost.scale)))
+            ghost.render(screen)
             ghost.animate()
 
             if common.DEBUG_MODE:
