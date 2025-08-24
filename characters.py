@@ -29,22 +29,33 @@ class PacMan:
         self.direction: Direction = Direction.NONE
         self.color: Tuple[int, int, int, int] = (255, 255, 0, 255)
 
-        self.speed: int = 15
-        self.speed_tick: int = 0
+        node_pos = common.node_number_to_cursor_pos(self.current_node)
+        self.pixel_pos: Tuple[int, int] = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
+        self.target_pixel_pos: Tuple[int, int] = self.pixel_pos[:]
+
+        self.speed: int = 2
 
         self.legal_tiles: Set[int] = legal_tiles
 
     def render(self, screen: pg.Surface):
-        pacman_pos: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_node)
-        common.draw_rect(screen=screen, color=self.color, rect=(pacman_pos[0], pacman_pos[1], common.TILE_SIZE[0], common.TILE_SIZE[1]))
+        common.draw_rect(screen=screen, color=self.color, rect=(self.pixel_pos[0] - common.OFFSET[0], self.pixel_pos[1] - common.OFFSET[1], common.TILE_SIZE[0], common.TILE_SIZE[1]))
 
-    def move_to_next_node(self) -> None:
-        if self.speed_tick != self.speed:
-            self.speed_tick += 1
-            return
+    def smooth_move(self) -> None:
+        if self.pixel_pos == self.target_pixel_pos:
+            new_node: int = self.move_to_next_node()
+            target_pos = common.node_number_to_cursor_pos(new_node)
+            self.target_pixel_pos = (target_pos[0] + common.OFFSET[0], target_pos[1] + common.OFFSET[1])
+
+        dx = self.target_pixel_pos[0] - self.pixel_pos[0]
+        dy = self.target_pixel_pos[1] - self.pixel_pos[1]
+        dist = (dx ** 2 + dy ** 2) ** 0.5
+
+        if dist > self.speed:
+            self.pixel_pos = (self.pixel_pos[0] + self.speed * dx / dist, self.pixel_pos[1] + self.speed * dy / dist)
         else:
-            self.speed_tick = 0
+            self.pixel_pos = self.target_pixel_pos[:]
 
+    def move_to_next_node(self) -> int:
         if self.direction == Direction.UP:
             node_above: int | None = self.current_node - (common.TILE_DIMS[0]) if self.current_node >= common.TILE_DIMS[0] else None
             if node_above in self.legal_tiles:
@@ -61,6 +72,8 @@ class PacMan:
             node_right: int | None = self.current_node + 1 if self.current_node % common.TILE_DIMS[0] < (common.TILE_DIMS[0] - 1) else None
             if node_right in self.legal_tiles:
                 self.current_node = node_right
+        
+        return self.current_node
 
 class Ghost:
     def __init__(self, name: GhostName, current_node: int, scatter_target_node: int):
@@ -73,8 +86,11 @@ class Ghost:
         self._mode: GhostMode = GhostMode.CHASE
         self._scatter_target_node: int = scatter_target_node
 
-        self.speed: int = 15
-        self.speed_tick: int = 0
+        node_pos = common.node_number_to_cursor_pos(self.current_node)
+        self.pixel_pos: Tuple[int, int] = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
+        self.target_pixel_pos: Tuple[int, int] = self.pixel_pos[:]
+
+        self.speed: int = 2
 
         self._previous_tile: int = -1
 
@@ -151,8 +167,7 @@ class Ghost:
                 ]
 
     def render(self, screen: pg.Surface):
-        ghost_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_node)
-        common.draw_rect(screen=screen, color=self.color, rect=(ghost_position[0], ghost_position[1], common.TILE_SIZE[0]+1, common.TILE_SIZE[1]+1))
+        common.draw_rect(screen=screen, color=self.color, rect=(self.pixel_pos[0] - common.OFFSET[0], self.pixel_pos[1] - common.OFFSET[1], common.TILE_SIZE[0]+1, common.TILE_SIZE[1]+1))
 
         if common.SHOW_TARGET_NODES and self.target_node != -1:
             target_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.target_node)
@@ -251,13 +266,22 @@ class Ghost:
                 else:
                     self.target_node = self._scatter_target_node
 
-    def move_to_next_node(self, legal_tiles: Set[int]) -> None:
-        if self.speed_tick != self.speed:
-            self.speed_tick += 1
-            return
-        else:
-            self.speed_tick = 0
+    def smooth_move(self, legal_space: Set[int]) -> None:
+        if self.pixel_pos == self.target_pixel_pos:
+            new_node: int = self.move_to_next_node(legal_space)
+            target_pos = common.node_number_to_cursor_pos(new_node)
+            self.target_pixel_pos = (target_pos[0] + common.OFFSET[0], target_pos[1] + common.OFFSET[1])
 
+        dx = self.target_pixel_pos[0] - self.pixel_pos[0]
+        dy = self.target_pixel_pos[1] - self.pixel_pos[1]
+        dist = (dx ** 2 + dy ** 2) ** 0.5
+
+        if dist > self.speed:
+            self.pixel_pos = (self.pixel_pos[0] + self.speed * dx / dist, self.pixel_pos[1] + self.speed * dy / dist)
+        else:
+            self.pixel_pos = self.target_pixel_pos[:]
+
+    def move_to_next_node(self, legal_tiles: Set[int]) -> int:
         ghost_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_node)
         target_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.target_node)
 
@@ -288,3 +312,4 @@ class Ghost:
                 move_to_node = common.cursor_pos_to_node_number(move)
 
         self.current_node = move_to_node if move_to_node != -1 else self.current_node
+        return self.current_node

@@ -83,12 +83,12 @@ def main() -> None:
         if common.SHOW_TILE_NUMS:
             draw_tile_nums(screen)
 
-        pacman.move_to_next_node()
+        pacman.smooth_move()
         pacman.render(screen)
 
         for ghost in ghosts.values():
             ghost.choose_target_tile(blinky=ghosts['Blinky'], pacman=pacman)
-            ghost.move_to_next_node(legal_space)
+            ghost.smooth_move(legal_space)
             ghost.render(screen)
 
         for event in pg.event.get():
@@ -104,6 +104,12 @@ def main() -> None:
                     pacman.direction = Direction.LEFT
                 elif event.key == pg.K_RIGHT:
                     pacman.direction = Direction.RIGHT
+                elif event.key == pg.K_s:
+                    for ghost in ghosts.values():
+                        ghost.set_mode(GhostMode.SCATTER)
+                elif event.key == pg.K_c:
+                    for ghost in ghosts.values():
+                        ghost.set_mode(GhostMode.CHASE)
 
         if common.SHOW_FPS:
             pg.display.set_caption(f'PacMan (FPS: {clock.get_fps():.0f})')
