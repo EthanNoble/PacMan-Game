@@ -1,6 +1,4 @@
 from typing import List, Set, Tuple
-from graph import Graph
-from pygame import Color
 from enum import Enum
 import pygame as pg
 import assets
@@ -19,6 +17,11 @@ class GhostName(Enum):
     PINKY = 'Pinky'
     INKY = 'Inky'
     CLYDE = 'Clyde'
+
+class GhostMode(Enum):
+    CHASE = 'chase'
+    SCATTER = 'scatter'
+    FRIGHTENED = 'frightened'
 
 class PacMan:
     def __init__(self, start_node: int, legal_tiles: Set[int]):
@@ -60,12 +63,15 @@ class PacMan:
                 self.current_node = node_right
 
 class Ghost:
-    def __init__(self, name: GhostName, current_node: int):
+    def __init__(self, name: GhostName, current_node: int, scatter_target_node: int):
         self.name: GhostName = name
         self.current_node: int = current_node
         self.target_node: int = -1
         self.direction: Direction = Direction.NONE
         self.color: Tuple[int, int, int, int] = (0, 0, 0, 0)
+
+        self._mode: GhostMode = GhostMode.CHASE
+        self._scatter_target_node: int = scatter_target_node
 
         self.speed: int = 15
         self.speed_tick: int = 0
@@ -146,12 +152,11 @@ class Ghost:
 
     def render(self, screen: pg.Surface):
         ghost_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_node)
-        common.draw_rect(screen=screen, color=self.color, rect=(ghost_position[0], ghost_position[1], common.TILE_SIZE[0], common.TILE_SIZE[1]))
+        common.draw_rect(screen=screen, color=self.color, rect=(ghost_position[0], ghost_position[1], common.TILE_SIZE[0]+1, common.TILE_SIZE[1]+1))
 
         if common.SHOW_TARGET_NODES and self.target_node != -1:
             target_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.target_node)
-            transparent_color: Tuple[int, int, int, int] = (self.color[0], self.color[1], self.color[2], 30)
-            common.draw_rect(screen=screen, color=transparent_color, rect=(target_position[0], target_position[1], common.TILE_SIZE[0], common.TILE_SIZE[1]))
+            common.draw_rect(screen=screen, color=self.color, rect=(target_position[0], target_position[1], common.TILE_SIZE[0]+1, common.TILE_SIZE[1]+1), width=1)
 
     def get_body_image(self) -> pg.Surface:
         return self._body_animation[self._body_animation_frame][self.direction_to_index()]
@@ -177,7 +182,15 @@ class Ghost:
     def get_color(self) -> Tuple[int, int, int, int]:
         return self.color
 
+    def set_mode(self, mode: GhostMode) -> None:
+        self._mode = mode
+        if self._mode == GhostMode.SCATTER:
+            self.target_node = self._scatter_target_node
+
     def choose_target_tile(self, blinky: 'Ghost', pacman: PacMan) -> None:
+        if self._mode == GhostMode.SCATTER:
+            return
+        
         match self.name:
             case GhostName.BLINKY:
                 self.target_node = pacman.current_node
@@ -195,7 +208,7 @@ class Ghost:
                         self.target_node = pacman.current_node
             case GhostName.INKY:
                 blinky_pos: Tuple[int, int] = common.node_number_to_cursor_pos(blinky.current_node)
-                offset: Tuple[int, int] = (0, 0)
+                offset_tile: Tuple[int, int] = (0, 0)
 
                 match pacman.direction:
                     case Direction.UP:
@@ -217,10 +230,26 @@ class Ghost:
                 
                 if common.SHOW_TARGET_NODES:
                     # Drawing the vector from Blinky through the offset tile to Inky's target tile
-                    pg.draw.line(pg.display.get_surface(), self.color, (blinky_pos[0] + common.OFFSET[0], blinky_pos[1] + common.OFFSET[1]), (target_x + common.OFFSET[0], target_y + common.OFFSET[1]), 1)
+                    pg.draw.line(
+                        pg.display.get_surface(),
+                        self.color,
+                        start_pos=(blinky_pos[0] + common.OFFSET[0], blinky_pos[1] + common.OFFSET[1]),
+                        end_pos=(target_x + common.OFFSET[0], target_y + common.OFFSET[1]),
+                        width=1)
 
             case GhostName.CLYDE:
-                self.target_node = pacman.current_node
+                pacman_pos: Tuple[int, int] = common.node_number_to_cursor_pos(pacman.current_node)
+                ghost_pos: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_node)
+
+                dx: int = pacman_pos[0] - ghost_pos[0]
+                dy: int = pacman_pos[1] - ghost_pos[1]
+                dist: float = (dx ** 2 + dy ** 2) ** 0.5
+                tile_dist: float = dist / common.TILE_SIZE[0]
+                
+                if tile_dist >= 8:
+                    self.target_node = pacman.current_node
+                else:
+                    self.target_node = self._scatter_target_node
 
     def move_to_next_node(self, legal_tiles: Set[int]) -> None:
         if self.speed_tick != self.speed:
@@ -237,9 +266,9 @@ class Ghost:
         below_tile_pos: Tuple[int, int] = (ghost_position[0], ghost_position[1] + common.TILE_SIZE[1])
         left_tile_pos: Tuple[int, int] = (ghost_position[0] - common.TILE_SIZE[0], ghost_position[1])
         right_tile_pos: Tuple[int, int] = (ghost_position[0] + common.TILE_SIZE[0], ghost_position[1])
-        candidate_tiles: List[Tuple[int, int]] = [above_tile_pos, below_tile_pos, left_tile_pos, right_tile_pos]
+        candidate_tiles: List[Tuple[int, int]] = [right_tile_pos, below_tile_pos, left_tile_pos, above_tile_pos]
 
-        legal_moves: List[Tuple[int, int]] = [] #list(filter(lambda tile: common.cursor_pos_to_node_number(tile) in legal_tiles, candidate_tiles))
+        legal_moves: List[Tuple[int, int]] = []
         for tile in candidate_tiles:
             node_number: int = common.cursor_pos_to_node_number(tile)
             if node_number in legal_tiles and node_number != self._previous_tile:

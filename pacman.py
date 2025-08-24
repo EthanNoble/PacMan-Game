@@ -1,7 +1,6 @@
 import pygame as pg
-from graph import Graph
 from typing import Tuple, List, Set, Dict
-from characters import Ghost, PacMan, Direction, GhostName
+from characters import Ghost, PacMan, Direction, GhostName, GhostMode
 import common
 
 def legal_tiles(map_assets: List[Tuple[pg.Surface | None, bool]]) -> Set[int]:
@@ -14,14 +13,14 @@ def legal_tiles(map_assets: List[Tuple[pg.Surface | None, bool]]) -> Set[int]:
             legal_tiles.add(node_num)
     return legal_tiles
 
-def draw_map(screen, game_map):
-    for node_num in game_map.adj_list:
-        if len(game_map.neighbors_of(node_num)) > 0:
-            draw_node(screen, pg.Color('gray33'), node_num)
-            for neighbor in game_map.neighbors_of(node_num):
-                node_x, node_y = common.node_number_to_cursor_pos(node_num)
-                x_neighbor, y_neighbor = common.node_number_to_cursor_pos(neighbor)
-                pg.draw.line(screen, pg.Color('gray33'), (node_x+common.OFFSET[0], node_y+common.OFFSET[1]), (x_neighbor+common.OFFSET[0], y_neighbor+common.OFFSET[1]), 1)
+def draw_tile_nums(screen) -> None:
+    for tile_num in range(common.TILE_DIMS[0] * common.TILE_DIMS[1]):
+        # Prints every so or so node number (degrades performance significantly)
+        if tile_num % 5 == 0:
+            x, y = common.node_number_to_cursor_pos(tile_num)
+            font = pg.font.Font(None, 14)
+            text = font.render(str(tile_num), True, pg.Color('white'))
+            screen.blit(text, (x + common.OFFSET[0], y + common.OFFSET[1]))
 
 def draw_path(screen, path, color: pg.Color):
     for i in range(len(path)):
@@ -30,16 +29,6 @@ def draw_path(screen, path, color: pg.Color):
             x_n = path[i+1] % common.TILE_DIMS[0]
             y_n = path[i+1] // common.TILE_DIMS[0]
             pg.draw.line(screen, color, (position[0]+common.OFFSET[0], position[1]+common.OFFSET[1]), (x_n*common.TILE_SIZE[0]+common.OFFSET[0], y_n*common.TILE_SIZE[1]+common.OFFSET[1]), 1)
-
-def draw_node(screen, col, node_num):
-        x, y = common.node_number_to_cursor_pos(node_num)
-        pg.draw.circle(screen, col, (x+common.OFFSET[0], y+common.OFFSET[1]), 3, 0)
-        
-        # Prints every so or so node number (degrades performance significantly)
-        if node_num % 5 == 0 and common.DEBUG_GRAPH_NODES:
-            font = pg.font.Font(None, 14)
-            text = font.render(str(node_num), True, pg.Color('white'))
-            screen.blit(text, (x, y))
 
 def draw_grid(screen: pg.Surface, map_assets: List[Tuple[pg.Surface | None, bool]]) -> None:
     screen.fill(pg.Color('black'))
@@ -82,17 +71,17 @@ def main() -> None:
     pacman: PacMan = PacMan(start_node=574, legal_tiles=legal_space)
 
     ghosts: Dict[str, Ghost] = {
-        'Blinky': Ghost(name=GhostName.BLINKY, current_node=113),
-        'Pinky': Ghost(name=GhostName.PINKY, current_node=897),
-        'Inky': Ghost(name=GhostName.INKY, current_node=138),
-        # 'Clyde': Ghost(name=GhostName.CLYDE, current_node=922)
+        'Blinky': Ghost(name=GhostName.BLINKY, current_node=138, scatter_target_node=25),
+        'Pinky': Ghost(name=GhostName.PINKY, current_node=113, scatter_target_node=2),
+        'Inky': Ghost(name=GhostName.INKY, current_node=922, scatter_target_node=979),
+        'Clyde': Ghost(name=GhostName.CLYDE, current_node=897, scatter_target_node=952)
     }
 
     running: bool = True
     while running:
         draw_grid(screen, map_assets)
-        # if common.DEBUG_MODE:
-        #     draw_map(screen, map)
+        if common.SHOW_TILE_NUMS:
+            draw_tile_nums(screen)
 
         pacman.move_to_next_node()
         pacman.render(screen)

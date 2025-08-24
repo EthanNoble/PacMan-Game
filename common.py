@@ -14,8 +14,8 @@ SCR_SIZE = (TILE_DIMS[0] * TILE_SIZE[0], TILE_DIMS[1] * TILE_SIZE[1])
 OFFSET = (TILE_SIZE[0]//2, TILE_SIZE[1]//2)
 
 DEBUG_MODE = False
-SHOW_GRID_LINES = True
-DEBUG_GRAPH_NODES = False
+SHOW_GRID_LINES = False
+SHOW_TILE_NUMS = False
 SHOW_TARGET_NODES = False
 SHOW_FPS = True
 
@@ -47,7 +47,7 @@ def place_image(screen: pg.Surface, image: pg.Surface | None, position: Tuple[in
     if image:
         screen.blit(image, (position[0], position[1]))
 
-def draw_rect(screen: pg.Surface, color: Tuple[int, int, int, int], rect: Tuple[int, int, int, int]) -> None:
+def draw_rect(screen: pg.Surface, color: Tuple[int, int, int, int], rect: Tuple[int, int, int, int], width: int = 0) -> None:
     shape_surf = pg.Surface(pg.Rect(rect).size, pg.SRCALPHA)
-    pg.draw.rect(shape_surf, color, shape_surf.get_rect())
+    pg.draw.rect(shape_surf, color, shape_surf.get_rect(), width)
     screen.blit(shape_surf, rect)
