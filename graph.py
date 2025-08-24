@@ -17,6 +17,9 @@ class Graph:
         self.adj_list[self.new_key] = set()
         self.new_key += 1
 
+    def is_node_in_graph(self, node: int) -> bool:
+        return node in self.adj_list and len(self.adj_list[node]) > 0
+
     def remove_node(self, node: int) -> None:
         if node not in self.adj_list:
             raise KeyError(f'Node {node} not found in graph')
