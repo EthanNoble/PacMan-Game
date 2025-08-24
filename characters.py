@@ -37,8 +37,56 @@ class PacMan:
 
         self.legal_tiles: Set[int] = legal_tiles
 
+        self._animation_speed: int = 5 # Every so and so frames
+        self._animation_frame: int = 0
+
+        self._body_animation_frame: int = 0
+        self._body_animation: List[List[pg.Surface]] = [
+            [
+                common.load_asset(assets.PACMAN1),
+                common.load_asset(assets.PACMAN1),
+                common.load_asset(assets.PACMAN1),
+                common.load_asset(assets.PACMAN1),
+            ],
+            [
+                common.load_asset(assets.PACMAN2_RIGHT),
+                common.load_asset(assets.PACMAN2_DOWN),
+                common.load_asset(assets.PACMAN2_LEFT),
+                common.load_asset(assets.PACMAN2_UP),
+            ],
+            [
+                common.load_asset(assets.PACMAN3_RIGHT),
+                common.load_asset(assets.PACMAN3_DOWN),
+                common.load_asset(assets.PACMAN3_LEFT),
+                common.load_asset(assets.PACMAN3_UP),
+            ]
+
+        ]
+
     def render(self, screen: pg.Surface):
-        common.draw_rect(screen=screen, color=self.color, rect=(self.pixel_pos[0] - common.OFFSET[0], self.pixel_pos[1] - common.OFFSET[1], common.TILE_SIZE[0], common.TILE_SIZE[1]))
+        position: Tuple[int, int] = (self.pixel_pos[0] - common.TILE_SIZE[0] + 1, self.pixel_pos[1] - common.TILE_SIZE[1] + 1)
+        common.place_image(screen=screen, image=self.get_body_image(), position=position)
+
+    def get_body_image(self) -> pg.Surface:
+        return self._body_animation[self._body_animation_frame][self.direction_to_index()]
+    
+    def direction_to_index(self) -> int:
+        match self.direction:
+            case Direction.UP:
+                return 3
+            case Direction.DOWN:
+                return 1
+            case Direction.LEFT:
+                return 2
+            case Direction.RIGHT:
+                return 0
+            case _:
+                return 0
+    
+    def animate(self):
+        self._animation_frame = (self._animation_frame + 1) % self._animation_speed
+        if self._animation_frame == 0:
+            self._body_animation_frame = (self._body_animation_frame + 1) % len(self._body_animation)
 
     def smooth_move(self) -> None:
         if self.pixel_pos == self.target_pixel_pos:
@@ -90,14 +138,13 @@ class Ghost:
         self.pixel_pos: Tuple[int, int] = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
         self.target_pixel_pos: Tuple[int, int] = self.pixel_pos[:]
 
-        self.speed: int = 2
+        self.speed: int = 1
 
         self._previous_tile: int = -1
 
         self._animation_speed: int = 5 # Every so and so frames
         self._animation_frame: int = 0
 
-        self._scale: float = 1.5
         self._body_animation_frame: int = 0
         self._body_animation: List[List[pg.Surface]] = []
         match self.name:
@@ -105,69 +152,70 @@ class Ghost:
                 self.color = (255, 0, 0, 255)
                 self._body_animation = [
                     [
-                        common.load_asset(assets.BLINKY1_RIGHT, scale=self._scale),
-                        common.load_asset(assets.BLINKY1_DOWN, scale=self._scale),
-                        common.load_asset(assets.BLINKY1_LEFT, scale=self._scale),
-                        common.load_asset(assets.BLINKY1_UP, scale=self._scale),
+                        common.load_asset(assets.BLINKY1_RIGHT),
+                        common.load_asset(assets.BLINKY1_DOWN),
+                        common.load_asset(assets.BLINKY1_LEFT),
+                        common.load_asset(assets.BLINKY1_UP),
                     ],
                     [
-                        common.load_asset(assets.BLINKY2_RIGHT, scale=self._scale),
-                        common.load_asset(assets.BLINKY2_DOWN, scale=self._scale),
-                        common.load_asset(assets.BLINKY2_LEFT, scale=self._scale),
-                        common.load_asset(assets.BLINKY2_UP, scale=self._scale),
+                        common.load_asset(assets.BLINKY2_RIGHT),
+                        common.load_asset(assets.BLINKY2_DOWN),
+                        common.load_asset(assets.BLINKY2_LEFT),
+                        common.load_asset(assets.BLINKY2_UP),
                     ]
                 ]
             case GhostName.PINKY:
                 self.color = (255, 192, 203, 255)
                 self._body_animation = [
                     [
-                        common.load_asset(assets.PINKY1_RIGHT, scale=self._scale),
-                        common.load_asset(assets.PINKY1_DOWN, scale=self._scale),
-                        common.load_asset(assets.PINKY1_LEFT, scale=self._scale),
-                        common.load_asset(assets.PINKY1_UP, scale=self._scale),
+                        common.load_asset(assets.PINKY1_RIGHT),
+                        common.load_asset(assets.PINKY1_DOWN),
+                        common.load_asset(assets.PINKY1_LEFT),
+                        common.load_asset(assets.PINKY1_UP),
                     ],
                     [
-                        common.load_asset(assets.PINKY2_RIGHT, scale=self._scale),
-                        common.load_asset(assets.PINKY2_DOWN, scale=self._scale),
-                        common.load_asset(assets.PINKY2_LEFT, scale=self._scale),
-                        common.load_asset(assets.PINKY2_UP, scale=self._scale),
+                        common.load_asset(assets.PINKY2_RIGHT),
+                        common.load_asset(assets.PINKY2_DOWN),
+                        common.load_asset(assets.PINKY2_LEFT),
+                        common.load_asset(assets.PINKY2_UP),
                     ]
                 ]
             case GhostName.INKY:
                 self.color = (0, 255, 255, 255)
                 self._body_animation = [
                     [
-                        common.load_asset(assets.INKY1_RIGHT, scale=self._scale),
-                        common.load_asset(assets.INKY1_DOWN, scale=self._scale),
-                        common.load_asset(assets.INKY1_LEFT, scale=self._scale),
-                        common.load_asset(assets.INKY1_UP, scale=self._scale),
+                        common.load_asset(assets.INKY1_RIGHT),
+                        common.load_asset(assets.INKY1_DOWN),
+                        common.load_asset(assets.INKY1_LEFT),
+                        common.load_asset(assets.INKY1_UP),
                     ],
                     [
-                        common.load_asset(assets.INKY2_RIGHT, scale=self._scale),
-                        common.load_asset(assets.INKY2_DOWN, scale=self._scale),
-                        common.load_asset(assets.INKY2_LEFT, scale=self._scale),
-                        common.load_asset(assets.INKY2_UP, scale=self._scale),
+                        common.load_asset(assets.INKY2_RIGHT),
+                        common.load_asset(assets.INKY2_DOWN),
+                        common.load_asset(assets.INKY2_LEFT),
+                        common.load_asset(assets.INKY2_UP),
                     ]
                 ]
             case GhostName.CLYDE:
                 self.color = (255, 165, 0, 255)
                 self._body_animation = [
                     [
-                        common.load_asset(assets.CLYDE1_RIGHT, scale=self._scale),
-                        common.load_asset(assets.CLYDE1_DOWN, scale=self._scale),
-                        common.load_asset(assets.CLYDE1_LEFT, scale=self._scale),
-                        common.load_asset(assets.CLYDE1_UP, scale=self._scale),
+                        common.load_asset(assets.CLYDE1_RIGHT),
+                        common.load_asset(assets.CLYDE1_DOWN),
+                        common.load_asset(assets.CLYDE1_LEFT),
+                        common.load_asset(assets.CLYDE1_UP),
                     ],
                     [
-                        common.load_asset(assets.CLYDE2_RIGHT, scale=self._scale),
-                        common.load_asset(assets.CLYDE2_DOWN, scale=self._scale),
-                        common.load_asset(assets.CLYDE2_LEFT, scale=self._scale),
-                        common.load_asset(assets.CLYDE2_UP, scale=self._scale),
+                        common.load_asset(assets.CLYDE2_RIGHT),
+                        common.load_asset(assets.CLYDE2_DOWN),
+                        common.load_asset(assets.CLYDE2_LEFT),
+                        common.load_asset(assets.CLYDE2_UP),
                     ]
                 ]
 
     def render(self, screen: pg.Surface):
-        common.draw_rect(screen=screen, color=self.color, rect=(self.pixel_pos[0] - common.OFFSET[0], self.pixel_pos[1] - common.OFFSET[1], common.TILE_SIZE[0]+1, common.TILE_SIZE[1]+1))
+        position: Tuple[int, int] = (self.pixel_pos[0] - common.TILE_SIZE[0] + 1, self.pixel_pos[1] - common.TILE_SIZE[1] + 1)
+        common.place_image(screen=screen, image=self.get_body_image(), position=position)
 
         if common.SHOW_TARGET_NODES and self.target_node != -1:
             target_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.target_node)
@@ -275,6 +323,15 @@ class Ghost:
         dx = self.target_pixel_pos[0] - self.pixel_pos[0]
         dy = self.target_pixel_pos[1] - self.pixel_pos[1]
         dist = (dx ** 2 + dy ** 2) ** 0.5
+
+        if dx < 0:
+            self.direction = Direction.LEFT
+        elif dx > 0:
+            self.direction = Direction.RIGHT
+        elif dy < 0:
+            self.direction = Direction.UP
+        elif dy > 0:
+            self.direction = Direction.DOWN
 
         if dist > self.speed:
             self.pixel_pos = (self.pixel_pos[0] + self.speed * dx / dist, self.pixel_pos[1] + self.speed * dy / dist)

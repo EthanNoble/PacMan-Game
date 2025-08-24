@@ -57,7 +57,7 @@ def load_map_from_file(file_path: str) -> List[Tuple[pg.Surface | None, bool]]:
 
 def main() -> None:
     pg.init()
-    screen: pg.Surface = pg.display.set_mode((common.SCR_SIZE[0]+1, common.SCR_SIZE[1]+1))
+    screen: pg.Surface = pg.display.set_mode((common.SCR_SIZE[0], common.SCR_SIZE[1]), pg.SCALED)
     pg.display.set_caption('PacMan')
     clock: pg.time.Clock = pg.time.Clock()
 
@@ -84,11 +84,13 @@ def main() -> None:
             draw_tile_nums(screen)
 
         pacman.smooth_move()
+        pacman.animate()
         pacman.render(screen)
 
         for ghost in ghosts.values():
             ghost.choose_target_tile(blinky=ghosts['Blinky'], pacman=pacman)
             ghost.smooth_move(legal_space)
+            ghost.animate()
             ghost.render(screen)
 
         for event in pg.event.get():

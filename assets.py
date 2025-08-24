@@ -3,8 +3,19 @@ from typing import List
 DIR: str = 'images/walls/'
 DIR2: str = 'images/pellets/'
 DIR3: str = 'images/characters/'
+DIR4: str = 'images/characters/pacman/'
 
 # CHARACTERS
+PACMAN1: str = DIR4 + 'pacman1.png'
+PACMAN2_LEFT: str = DIR4 + 'pacman2_left.png'
+PACMAN2_RIGHT: str = DIR4 + 'pacman2_right.png'
+PACMAN2_UP: str = DIR4 + 'pacman2_up.png'
+PACMAN2_DOWN: str = DIR4 + 'pacman2_down.png'
+PACMAN3_LEFT: str = DIR4 + 'pacman3_left.png'
+PACMAN3_RIGHT: str = DIR4 + 'pacman3_right.png'
+PACMAN3_UP: str = DIR4 + 'pacman3_up.png'
+PACMAN3_DOWN: str = DIR4 + 'pacman3_down.png'
+
 BLINKY1_RIGHT: str = DIR3 + 'blinky1_right.png'
 BLINKY1_LEFT: str = DIR3 + 'blinky1_left.png'
 BLINKY1_UP: str = DIR3 + 'blinky1_up.png'
