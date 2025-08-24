@@ -33,11 +33,11 @@ class PacMan:
         self.pixel_pos: Tuple[int, int] = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
         self.target_pixel_pos: Tuple[int, int] = self.pixel_pos[:]
 
-        self.speed: int = 2
+        self.speed: float = 0.8
 
         self.legal_tiles: Set[int] = legal_tiles
 
-        self._animation_speed: int = 5 # Every so and so frames
+        self._animation_speed: int = 3 # Every so and so frames
         self._animation_frame: int = 0
 
         self._body_animation_frame: int = 0
@@ -60,11 +60,10 @@ class PacMan:
                 common.load_asset(assets.PACMAN3_LEFT),
                 common.load_asset(assets.PACMAN3_UP),
             ]
-
         ]
 
     def render(self, screen: pg.Surface):
-        position: Tuple[int, int] = (self.pixel_pos[0] - common.TILE_SIZE[0] + 1, self.pixel_pos[1] - common.TILE_SIZE[1] + 1)
+        position: Tuple[int, int] = (self.pixel_pos[0] - common.TILE_SIZE[0] + 2, self.pixel_pos[1] - common.TILE_SIZE[1] + 1)
         common.place_image(screen=screen, image=self.get_body_image(), position=position)
 
     def get_body_image(self) -> pg.Surface:
@@ -138,7 +137,7 @@ class Ghost:
         self.pixel_pos: Tuple[int, int] = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
         self.target_pixel_pos: Tuple[int, int] = self.pixel_pos[:]
 
-        self.speed: int = 1
+        self.speed: float = 0.8
 
         self._previous_tile: int = -1
 
