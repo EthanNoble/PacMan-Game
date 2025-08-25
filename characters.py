@@ -2,6 +2,7 @@ from typing import List, Set, Tuple
 from enum import Enum
 import pygame as pg
 import assets
+import time
 
 import common
 
@@ -37,10 +38,15 @@ class PacMan:
 
         self.legal_tiles: Set[int] = legal_tiles
 
+        self._dying: bool = False
+        self._dead: bool = False
+
         self._animation_speed: int = 3 # Every so and so frames
         self._animation_frame: int = 0
 
         self._body_animation_frame: int = 0
+        self._death_animation_frame: int = 0
+
         self._body_animation: List[List[pg.Surface]] = [
             [
                 common.load_asset(assets.PACMAN1),
@@ -61,14 +67,32 @@ class PacMan:
                 common.load_asset(assets.PACMAN3_UP),
             ]
         ]
+        self._death_animation: List[pg.Surface] = [
+            common.load_asset(assets.PACMAN_DEATH_1),
+            common.load_asset(assets.PACMAN_DEATH_2),
+            common.load_asset(assets.PACMAN_DEATH_3),
+            common.load_asset(assets.PACMAN_DEATH_4),
+            common.load_asset(assets.PACMAN_DEATH_5),
+            common.load_asset(assets.PACMAN_DEATH_6),
+            common.load_asset(assets.PACMAN_DEATH_7),
+            common.load_asset(assets.PACMAN_DEATH_8),
+            common.load_asset(assets.PACMAN_DEATH_9),
+            common.load_asset(assets.PACMAN_DEATH_10),
+            common.load_asset(assets.PACMAN_DEATH_11)
+        ]
 
     def render(self, screen: pg.Surface):
-        position: Tuple[int, int] = (self.pixel_pos[0] - common.TILE_SIZE[0] + 2, self.pixel_pos[1] - common.TILE_SIZE[1] + 1)
+        if self._dead:
+            return
+        
+        position: Tuple[int, int] = (self.pixel_pos[0] - common.TILE_SIZE[0], self.pixel_pos[1] - common.TILE_SIZE[1])
         common.place_image(screen=screen, image=self.get_body_image(), position=position)
 
     def get_body_image(self) -> pg.Surface:
-        return self._body_animation[self._body_animation_frame][self.direction_to_index()]
-    
+        if not self._dying:
+            return self._body_animation[self._body_animation_frame][self.direction_to_index()]
+        return self._death_animation[self._death_animation_frame]
+
     def direction_to_index(self) -> int:
         match self.direction:
             case Direction.UP:
@@ -83,11 +107,28 @@ class PacMan:
                 return 0
     
     def animate(self):
+        if self._dead:
+            return
+        
         self._animation_frame = (self._animation_frame + 1) % self._animation_speed
         if self._animation_frame == 0:
-            self._body_animation_frame = (self._body_animation_frame + 1) % len(self._body_animation)
+            if not self._dying:
+                self._body_animation_frame = (self._body_animation_frame + 1) % len(self._body_animation)
+            else:
+                self._death_animation_frame += 1
+                if self._death_animation_frame >= len(self._death_animation):
+                    self._dead = True
+
+    def slowly_kill(self) -> None:
+        self._dying = True
+        self._animation_speed = 8
+    
+    def is_dying(self) -> bool:
+        return self._dying
 
     def smooth_move(self) -> None:
+        if self._dying:
+            return
         if self.pixel_pos == self.target_pixel_pos:
             new_node: int = self.move_to_next_node()
             target_pos = common.node_number_to_cursor_pos(new_node)
@@ -142,9 +183,9 @@ class Ghost:
         self._previous_tile: int = -1
 
         self._animation_speed: int = 5 # Every so and so frames
-        self._animation_frame: int = 0
-
         self._body_animation_frame: int = 0
+
+        self._animation_frame: int = 0
         self._body_animation: List[List[pg.Surface]] = []
         match self.name:
             case GhostName.BLINKY:

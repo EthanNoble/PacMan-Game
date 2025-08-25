@@ -57,6 +57,8 @@ def load_map_from_file(file_path: str) -> List[Tuple[pg.Surface | None, bool]]:
 
 def main() -> None:
     pg.init()
+    if common.SHOW_GRID_LINES:
+        common.SCR_SIZE = (common.SCR_SIZE[0] + 1, common.SCR_SIZE[1] + 1)
     screen: pg.Surface = pg.display.set_mode((common.SCR_SIZE[0], common.SCR_SIZE[1]), pg.SCALED)
     pg.display.set_caption('PacMan')
     clock: pg.time.Clock = pg.time.Clock()
@@ -77,41 +79,62 @@ def main() -> None:
         'Clyde': Ghost(name=GhostName.CLYDE, current_node=897, scatter_target_node=952)
     }
 
+    pause_before_death: bool = False
+    pause_frames: int = 80
+    curr_pause_frame: int = 0
+
     running: bool = True
     while running:
         draw_grid(screen, map_assets)
         if common.SHOW_TILE_NUMS:
             draw_tile_nums(screen)
 
-        pacman.smooth_move()
-        pacman.animate()
+        # PACMAN
+        if not pause_before_death:
+            pacman.smooth_move()
+            pacman.animate()
         pacman.render(screen)
 
+        # GHOSTS
         for ghost in ghosts.values():
             ghost.choose_target_tile(blinky=ghosts['Blinky'], pacman=pacman)
-            ghost.smooth_move(legal_space)
+
+            if not pacman.is_dying() and not pause_before_death:
+                ghost.smooth_move(legal_space)
             ghost.animate()
             ghost.render(screen)
+            if ghost.current_node == pacman.current_node:
+                # pacman.slowly_kill()
+                pause_before_death = True
+        
+        if pause_before_death:
+            curr_pause_frame += 1
+            if curr_pause_frame >= pause_frames:
+                ghosts.clear()
+                pacman.slowly_kill()
+                pacman.animate()
 
+        # EVENTS
         for event in pg.event.get():
             if event.type == pg.QUIT:
                 running = False
 
             if event.type == pg.KEYDOWN:
-                if event.key == pg.K_UP:
-                    pacman.direction = Direction.UP
-                elif event.key == pg.K_DOWN:
-                    pacman.direction = Direction.DOWN
-                elif event.key == pg.K_LEFT:
-                    pacman.direction = Direction.LEFT
-                elif event.key == pg.K_RIGHT:
-                    pacman.direction = Direction.RIGHT
-                elif event.key == pg.K_s:
-                    for ghost in ghosts.values():
-                        ghost.set_mode(GhostMode.SCATTER)
-                elif event.key == pg.K_c:
-                    for ghost in ghosts.values():
-                        ghost.set_mode(GhostMode.CHASE)
+                if not pacman.is_dying():
+                    if event.key == pg.K_UP:
+                        pacman.direction = Direction.UP
+                    elif event.key == pg.K_DOWN:
+                        pacman.direction = Direction.DOWN
+                    elif event.key == pg.K_LEFT:
+                        pacman.direction = Direction.LEFT
+                    elif event.key == pg.K_RIGHT:
+                        pacman.direction = Direction.RIGHT
+                    elif event.key == pg.K_s:
+                        for ghost in ghosts.values():
+                            ghost.set_mode(GhostMode.SCATTER)
+                    elif event.key == pg.K_c:
+                        for ghost in ghosts.values():
+                            ghost.set_mode(GhostMode.CHASE)
 
         if common.SHOW_FPS:
             pg.display.set_caption(f'PacMan (FPS: {clock.get_fps():.0f})')
