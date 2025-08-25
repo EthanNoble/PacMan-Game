@@ -5,28 +5,17 @@ import assets
 
 import common
 
-class Direction(Enum):
-    NONE = ''
-    UP = 'up'
-    DOWN = 'down'
-    LEFT = 'left'
-    RIGHT = 'right'
-
-class GhostName(Enum):
-    BLINKY = 'Blinky'
-    PINKY = 'Pinky'
-    INKY = 'Inky'
-    CLYDE = 'Clyde'
-
-class GhostMode(Enum):
-    CHASE = 'chase'
-    SCATTER = 'scatter'
-    FRIGHTENED = 'frightened'
-
 class Character:
+    class Direction(Enum):
+        NONE = ''
+        UP = 'up'
+        DOWN = 'down'
+        LEFT = 'left'
+        RIGHT = 'right'
+        
     def __init__(self, current_tile: int, animation_speed: int):
         self.current_tile: int = current_tile
-        self.direction: Direction = Direction.NONE
+        self.direction: Character.Direction = Character.Direction.NONE
         self.color: Tuple[int, int, int, int]
 
         node_pos = common.node_number_to_cursor_pos(self.current_tile)
@@ -41,13 +30,13 @@ class Character:
     # Implemented Methods #
     def direction_to_index(self) -> int:
         match self.direction:
-            case Direction.UP:
+            case Character.Direction.UP:
                 return 3
-            case Direction.DOWN:
+            case Character.Direction.DOWN:
                 return 1
-            case Direction.LEFT:
+            case Character.Direction.LEFT:
                 return 2
-            case Direction.RIGHT:
+            case Character.Direction.RIGHT:
                 return 0
             case _:
                 return 0
@@ -165,19 +154,19 @@ class PacMan(Character):
             self.pixel_pos = self.target_pixel_pos[:]
 
     def move_to_next_node(self, legal_tiles: Set[int] | None = None) -> int:
-        if self.direction == Direction.UP:
+        if self.direction == Character.Direction.UP:
             node_above: int | None = self.current_tile - (common.TILE_DIMS[0]) if self.current_tile >= common.TILE_DIMS[0] else None
             if node_above in self.legal_tiles:
                 self.current_tile = node_above
-        elif self.direction == Direction.DOWN:
+        elif self.direction == Character.Direction.DOWN:
             node_below: int | None = self.current_tile + (common.TILE_DIMS[0]) if self.current_tile < (common.TILE_DIMS[0] * (common.TILE_DIMS[1] - 1)) else None
             if node_below in self.legal_tiles:
                 self.current_tile = node_below
-        elif self.direction == Direction.LEFT:
+        elif self.direction == Character.Direction.LEFT:
             node_left: int | None = self.current_tile - 1 if self.current_tile % common.TILE_DIMS[0] > 0 else None
             if node_left in self.legal_tiles:
                 self.current_tile = node_left
-        elif self.direction == Direction.RIGHT:
+        elif self.direction == Character.Direction.RIGHT:
             node_right: int | None = self.current_tile + 1 if self.current_tile % common.TILE_DIMS[0] < (common.TILE_DIMS[0] - 1) else None
             if node_right in self.legal_tiles:
                 self.current_tile = node_right
@@ -185,12 +174,23 @@ class PacMan(Character):
         return self.current_tile
 
 class Ghost(Character):
-    def __init__(self, name: GhostName, current_tile: int, scatter_target_node: int):
+    class Name(Enum):
+        BLINKY = 'Blinky'
+        PINKY = 'Pinky'
+        INKY = 'Inky'
+        CLYDE = 'Clyde'
+
+    class Mode(Enum):
+        CHASE = 'chase'
+        SCATTER = 'scatter'
+        FRIGHTENED = 'frightened'
+
+    def __init__(self, name: Name, current_tile: int, scatter_target_node: int):
         super().__init__(current_tile, animation_speed=6)
-        self.name: GhostName = name
+        self.name: Ghost.Name = name
         self.target_node: int = -1
 
-        self._mode: GhostMode = GhostMode.CHASE
+        self._mode: Ghost.Mode = Ghost.Mode.CHASE
         self._scatter_target_node: int = scatter_target_node
 
         self._previous_tile: int = -1
@@ -198,7 +198,7 @@ class Ghost(Character):
         self._body_animation_frame: int = 0
         self._body_animation: List[List[pg.Surface]] = []
         match self.name:
-            case GhostName.BLINKY:
+            case Ghost.Name.BLINKY:
                 self.color = (255, 0, 0, 255)
                 self._body_animation = [
                     [
@@ -214,7 +214,7 @@ class Ghost(Character):
                         common.load_asset(assets.BLINKY2_UP),
                     ]
                 ]
-            case GhostName.PINKY:
+            case Ghost.Name.PINKY:
                 self.color = (255, 192, 203, 255)
                 self._body_animation = [
                     [
@@ -230,7 +230,7 @@ class Ghost(Character):
                         common.load_asset(assets.PINKY2_UP),
                     ]
                 ]
-            case GhostName.INKY:
+            case Ghost.Name.INKY:
                 self.color = (0, 255, 255, 255)
                 self._body_animation = [
                     [
@@ -246,7 +246,7 @@ class Ghost(Character):
                         common.load_asset(assets.INKY2_UP),
                     ]
                 ]
-            case GhostName.CLYDE:
+            case Ghost.Name.CLYDE:
                 self.color = (255, 165, 0, 255)
                 self._body_animation = [
                     [
@@ -279,42 +279,42 @@ class Ghost(Character):
         if self._animation_frame == 0:
             self._body_animation_frame = (self._body_animation_frame + 1) % len(self._body_animation)
 
-    def set_mode(self, mode: GhostMode) -> None:
+    def set_mode(self, mode: 'Ghost.Mode') -> None:
         self._mode = mode
-        if self._mode == GhostMode.SCATTER:
+        if self._mode == Ghost.Mode.SCATTER:
             self.target_node = self._scatter_target_node
 
     def choose_target_tile(self, blinky: 'Ghost', pacman: PacMan) -> None:
-        if self._mode == GhostMode.SCATTER:
+        if self._mode == Ghost.Mode.SCATTER:
             return
         
         match self.name:
-            case GhostName.BLINKY:
+            case Ghost.Name.BLINKY:
                 self.target_node = pacman.current_tile
-            case GhostName.PINKY:
+            case Ghost.Name.PINKY:
                 match pacman.direction:
-                    case Direction.UP:
+                    case Character.Direction.UP:
                         self.target_node = pacman.current_tile - common.TILE_DIMS[0]*4
-                    case Direction.DOWN:
+                    case Character.Direction.DOWN:
                         self.target_node = pacman.current_tile + common.TILE_DIMS[0]*4
-                    case Direction.LEFT:
+                    case Character.Direction.LEFT:
                         self.target_node = pacman.current_tile - 4
-                    case Direction.RIGHT:
+                    case Character.Direction.RIGHT:
                         self.target_node = pacman.current_tile + 4
                     case _:
                         self.target_node = pacman.current_tile
-            case GhostName.INKY:
+            case Ghost.Name.INKY:
                 blinky_pos: Tuple[int, int] = common.node_number_to_cursor_pos(blinky.current_tile)
                 offset_tile: Tuple[int, int] = (0, 0)
 
                 match pacman.direction:
-                    case Direction.UP:
+                    case Character.Direction.UP:
                         offset_tile  = common.node_number_to_cursor_pos(pacman.current_tile - common.TILE_DIMS[0]*2)
-                    case Direction.DOWN:
+                    case Character.Direction.DOWN:
                         offset_tile  = common.node_number_to_cursor_pos(pacman.current_tile + common.TILE_DIMS[0]*2)
-                    case Direction.LEFT:
+                    case Character.Direction.LEFT:
                         offset_tile  = common.node_number_to_cursor_pos(pacman.current_tile - 2)
-                    case Direction.RIGHT:
+                    case Character.Direction.RIGHT:
                         offset_tile  = common.node_number_to_cursor_pos(pacman.current_tile + 2)
                     case _:
                         offset_tile = common.node_number_to_cursor_pos(pacman.current_tile)
@@ -334,7 +334,7 @@ class Ghost(Character):
                         end_pos=(target_x + common.OFFSET[0], target_y + common.OFFSET[1]),
                         width=1)
 
-            case GhostName.CLYDE:
+            case Ghost.Name.CLYDE:
                 pacman_pos: Tuple[int, int] = common.node_number_to_cursor_pos(pacman.current_tile)
                 ghost_pos: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_tile)
 
@@ -359,13 +359,13 @@ class Ghost(Character):
         dist = (dx ** 2 + dy ** 2) ** 0.5
 
         if dx < 0:
-            self.direction = Direction.LEFT
+            self.direction = Character.Direction.LEFT
         elif dx > 0:
-            self.direction = Direction.RIGHT
+            self.direction = Character.Direction.RIGHT
         elif dy < 0:
-            self.direction = Direction.UP
+            self.direction = Character.Direction.UP
         elif dy > 0:
-            self.direction = Direction.DOWN
+            self.direction = Character.Direction.DOWN
 
         if dist > self.speed:
             self.pixel_pos = (self.pixel_pos[0] + self.speed * dx / dist, self.pixel_pos[1] + self.speed * dy / dist)

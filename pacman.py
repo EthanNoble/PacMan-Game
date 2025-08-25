@@ -1,6 +1,6 @@
 import pygame as pg
 from typing import Tuple, List, Set, Dict
-from characters import Ghost, PacMan, Direction, GhostName, GhostMode
+from characters import Ghost, PacMan, Character
 import common
 
 def legal_tiles(map_assets: List[Tuple[pg.Surface | None, bool]]) -> Set[int]:
@@ -73,10 +73,10 @@ def main() -> None:
     pacman: PacMan = PacMan(current_tile=574, legal_tiles=legal_space)
 
     ghosts: Dict[str, Ghost] = {
-        'Blinky': Ghost(name=GhostName.BLINKY, current_tile=138, scatter_target_node=25),
-        'Pinky': Ghost(name=GhostName.PINKY, current_tile=113, scatter_target_node=2),
-        'Inky': Ghost(name=GhostName.INKY, current_tile=922, scatter_target_node=979),
-        'Clyde': Ghost(name=GhostName.CLYDE, current_tile=897, scatter_target_node=952)
+        'Blinky': Ghost(name=Ghost.Name.BLINKY, current_tile=138, scatter_target_node=25),
+        'Pinky': Ghost(name=Ghost.Name.PINKY, current_tile=113, scatter_target_node=2),
+        'Inky': Ghost(name=Ghost.Name.INKY, current_tile=922, scatter_target_node=979),
+        'Clyde': Ghost(name=Ghost.Name.CLYDE, current_tile=897, scatter_target_node=952)
     }
 
     pause_before_death: bool = False
@@ -103,9 +103,8 @@ def main() -> None:
                 ghost.smooth_move(legal_space)
             ghost.animate()
             ghost.render(screen)
-            
+
             if ghost.current_tile == pacman.current_tile:
-                # pacman.slowly_kill()
                 pause_before_death = True
         
         if pause_before_death:
@@ -123,19 +122,19 @@ def main() -> None:
             if event.type == pg.KEYDOWN:
                 if not pacman.is_dying():
                     if event.key == pg.K_UP:
-                        pacman.direction = Direction.UP
+                        pacman.direction = Character.Direction.UP
                     elif event.key == pg.K_DOWN:
-                        pacman.direction = Direction.DOWN
+                        pacman.direction = Character.Direction.DOWN
                     elif event.key == pg.K_LEFT:
-                        pacman.direction = Direction.LEFT
+                        pacman.direction = Character.Direction.LEFT
                     elif event.key == pg.K_RIGHT:
-                        pacman.direction = Direction.RIGHT
+                        pacman.direction = Character.Direction.RIGHT
                     elif event.key == pg.K_s:
                         for ghost in ghosts.values():
-                            ghost.set_mode(GhostMode.SCATTER)
+                            ghost.set_mode(Ghost.Mode.SCATTER)
                     elif event.key == pg.K_c:
                         for ghost in ghosts.values():
-                            ghost.set_mode(GhostMode.CHASE)
+                            ghost.set_mode(Ghost.Mode.CHASE)
 
         if common.SHOW_FPS:
             pg.display.set_caption(f'PacMan (FPS: {clock.get_fps():.0f})')
