@@ -2,7 +2,6 @@ from typing import List, Set, Tuple
 from enum import Enum
 import pygame as pg
 import assets
-import time
 
 import common
 
@@ -24,25 +23,59 @@ class GhostMode(Enum):
     SCATTER = 'scatter'
     FRIGHTENED = 'frightened'
 
-class PacMan:
-    def __init__(self, start_node: int, legal_tiles: Set[int]):
-        self.current_node: int = start_node
+class Character:
+    def __init__(self, current_tile: int, animation_speed: int):
+        self.current_tile: int = current_tile
         self.direction: Direction = Direction.NONE
-        self.color: Tuple[int, int, int, int] = (255, 255, 0, 255)
+        self.color: Tuple[int, int, int, int]
 
-        node_pos = common.node_number_to_cursor_pos(self.current_node)
+        node_pos = common.node_number_to_cursor_pos(self.current_tile)
         self.pixel_pos: Tuple[int, int] = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
         self.target_pixel_pos: Tuple[int, int] = self.pixel_pos[:]
 
         self.speed: float = 0.8
 
+        self._animation_speed: int = animation_speed
+        self._animation_frame: int = 0
+    
+    # Implemented Methods #
+    def direction_to_index(self) -> int:
+        match self.direction:
+            case Direction.UP:
+                return 3
+            case Direction.DOWN:
+                return 1
+            case Direction.LEFT:
+                return 2
+            case Direction.RIGHT:
+                return 0
+            case _:
+                return 0
+    
+    # Abstract Methods #
+    def render(self, screen: pg.Surface) -> None:
+        raise NotImplementedError("Subclasses must implement render method")
+    
+    def animate(self) -> None:
+        raise NotImplementedError("Subclasses must implement animate method")
+
+    def smooth_move(self, legal_space: Set[int] | None = None) -> None:
+        raise NotImplementedError("Subclasses must implement smooth_move method")
+    
+    def move_to_next_node(self, legal_tiles: Set[int] | None = None) -> int:
+        raise NotImplementedError("Subclasses must implement move_to_next_node method")
+
+    def get_image(self) -> pg.Surface:
+        raise NotImplementedError("Subclasses must implement get_image method")
+
+class PacMan(Character):
+    def __init__(self, current_tile: int, legal_tiles: Set[int]):
+        super().__init__(current_tile, animation_speed=3)
+
         self.legal_tiles: Set[int] = legal_tiles
 
         self._dying: bool = False
         self._dead: bool = False
-
-        self._animation_speed: int = 3 # Every so and so frames
-        self._animation_frame: int = 0
 
         self._body_animation_frame: int = 0
         self._death_animation_frame: int = 0
@@ -81,32 +114,19 @@ class PacMan:
             common.load_asset(assets.PACMAN_DEATH_11)
         ]
 
-    def render(self, screen: pg.Surface):
+    def render(self, screen: pg.Surface) -> None:
         if self._dead:
             return
         
         position: Tuple[int, int] = (self.pixel_pos[0] - common.TILE_SIZE[0], self.pixel_pos[1] - common.TILE_SIZE[1])
-        common.place_image(screen=screen, image=self.get_body_image(), position=position)
+        common.place_image(screen=screen, image=self.get_image(), position=position)
 
-    def get_body_image(self) -> pg.Surface:
+    def get_image(self) -> pg.Surface:
         if not self._dying:
             return self._body_animation[self._body_animation_frame][self.direction_to_index()]
         return self._death_animation[self._death_animation_frame]
-
-    def direction_to_index(self) -> int:
-        match self.direction:
-            case Direction.UP:
-                return 3
-            case Direction.DOWN:
-                return 1
-            case Direction.LEFT:
-                return 2
-            case Direction.RIGHT:
-                return 0
-            case _:
-                return 0
-    
-    def animate(self):
+ 
+    def animate(self) -> None:
         if self._dead:
             return
         
@@ -126,9 +146,10 @@ class PacMan:
     def is_dying(self) -> bool:
         return self._dying
 
-    def smooth_move(self) -> None:
+    def smooth_move(self, legal_space: Set[int] | None = None) -> None:
         if self._dying:
             return
+        
         if self.pixel_pos == self.target_pixel_pos:
             new_node: int = self.move_to_next_node()
             target_pos = common.node_number_to_cursor_pos(new_node)
@@ -143,49 +164,38 @@ class PacMan:
         else:
             self.pixel_pos = self.target_pixel_pos[:]
 
-    def move_to_next_node(self) -> int:
+    def move_to_next_node(self, legal_tiles: Set[int] | None = None) -> int:
         if self.direction == Direction.UP:
-            node_above: int | None = self.current_node - (common.TILE_DIMS[0]) if self.current_node >= common.TILE_DIMS[0] else None
+            node_above: int | None = self.current_tile - (common.TILE_DIMS[0]) if self.current_tile >= common.TILE_DIMS[0] else None
             if node_above in self.legal_tiles:
-                self.current_node = node_above
+                self.current_tile = node_above
         elif self.direction == Direction.DOWN:
-            node_below: int | None = self.current_node + (common.TILE_DIMS[0]) if self.current_node < (common.TILE_DIMS[0] * (common.TILE_DIMS[1] - 1)) else None
+            node_below: int | None = self.current_tile + (common.TILE_DIMS[0]) if self.current_tile < (common.TILE_DIMS[0] * (common.TILE_DIMS[1] - 1)) else None
             if node_below in self.legal_tiles:
-                self.current_node = node_below
+                self.current_tile = node_below
         elif self.direction == Direction.LEFT:
-            node_left: int | None = self.current_node - 1 if self.current_node % common.TILE_DIMS[0] > 0 else None
+            node_left: int | None = self.current_tile - 1 if self.current_tile % common.TILE_DIMS[0] > 0 else None
             if node_left in self.legal_tiles:
-                self.current_node = node_left
+                self.current_tile = node_left
         elif self.direction == Direction.RIGHT:
-            node_right: int | None = self.current_node + 1 if self.current_node % common.TILE_DIMS[0] < (common.TILE_DIMS[0] - 1) else None
+            node_right: int | None = self.current_tile + 1 if self.current_tile % common.TILE_DIMS[0] < (common.TILE_DIMS[0] - 1) else None
             if node_right in self.legal_tiles:
-                self.current_node = node_right
-        
-        return self.current_node
+                self.current_tile = node_right
 
-class Ghost:
-    def __init__(self, name: GhostName, current_node: int, scatter_target_node: int):
+        return self.current_tile
+
+class Ghost(Character):
+    def __init__(self, name: GhostName, current_tile: int, scatter_target_node: int):
+        super().__init__(current_tile, animation_speed=6)
         self.name: GhostName = name
-        self.current_node: int = current_node
         self.target_node: int = -1
-        self.direction: Direction = Direction.NONE
-        self.color: Tuple[int, int, int, int] = (0, 0, 0, 0)
 
         self._mode: GhostMode = GhostMode.CHASE
         self._scatter_target_node: int = scatter_target_node
 
-        node_pos = common.node_number_to_cursor_pos(self.current_node)
-        self.pixel_pos: Tuple[int, int] = (node_pos[0] + common.OFFSET[0], node_pos[1] + common.OFFSET[1])
-        self.target_pixel_pos: Tuple[int, int] = self.pixel_pos[:]
-
-        self.speed: float = 0.8
-
         self._previous_tile: int = -1
 
-        self._animation_speed: int = 5 # Every so and so frames
         self._body_animation_frame: int = 0
-
-        self._animation_frame: int = 0
         self._body_animation: List[List[pg.Surface]] = []
         match self.name:
             case GhostName.BLINKY:
@@ -255,35 +265,19 @@ class Ghost:
 
     def render(self, screen: pg.Surface):
         position: Tuple[int, int] = (self.pixel_pos[0] - common.TILE_SIZE[0] + 1, self.pixel_pos[1] - common.TILE_SIZE[1] + 1)
-        common.place_image(screen=screen, image=self.get_body_image(), position=position)
+        common.place_image(screen=screen, image=self.get_image(), position=position)
 
         if common.SHOW_TARGET_NODES and self.target_node != -1:
             target_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.target_node)
             common.draw_rect(screen=screen, color=self.color, rect=(target_position[0], target_position[1], common.TILE_SIZE[0]+1, common.TILE_SIZE[1]+1), width=1)
 
-    def get_body_image(self) -> pg.Surface:
+    def get_image(self) -> pg.Surface:
         return self._body_animation[self._body_animation_frame][self.direction_to_index()]
 
-    def direction_to_index(self) -> int:
-        match self.direction:
-            case Direction.UP:
-                return 3
-            case Direction.DOWN:
-                return 1
-            case Direction.LEFT:
-                return 2
-            case Direction.RIGHT:
-                return 0
-            case _:
-                return 0
-
-    def animate(self):
+    def animate(self) -> None:
         self._animation_frame = (self._animation_frame + 1) % self._animation_speed
         if self._animation_frame == 0:
             self._body_animation_frame = (self._body_animation_frame + 1) % len(self._body_animation)
-
-    def get_color(self) -> Tuple[int, int, int, int]:
-        return self.color
 
     def set_mode(self, mode: GhostMode) -> None:
         self._mode = mode
@@ -296,34 +290,34 @@ class Ghost:
         
         match self.name:
             case GhostName.BLINKY:
-                self.target_node = pacman.current_node
+                self.target_node = pacman.current_tile
             case GhostName.PINKY:
                 match pacman.direction:
                     case Direction.UP:
-                        self.target_node = pacman.current_node - common.TILE_DIMS[0]*4
+                        self.target_node = pacman.current_tile - common.TILE_DIMS[0]*4
                     case Direction.DOWN:
-                        self.target_node = pacman.current_node + common.TILE_DIMS[0]*4
+                        self.target_node = pacman.current_tile + common.TILE_DIMS[0]*4
                     case Direction.LEFT:
-                        self.target_node = pacman.current_node - 4
+                        self.target_node = pacman.current_tile - 4
                     case Direction.RIGHT:
-                        self.target_node = pacman.current_node + 4
+                        self.target_node = pacman.current_tile + 4
                     case _:
-                        self.target_node = pacman.current_node
+                        self.target_node = pacman.current_tile
             case GhostName.INKY:
-                blinky_pos: Tuple[int, int] = common.node_number_to_cursor_pos(blinky.current_node)
+                blinky_pos: Tuple[int, int] = common.node_number_to_cursor_pos(blinky.current_tile)
                 offset_tile: Tuple[int, int] = (0, 0)
 
                 match pacman.direction:
                     case Direction.UP:
-                        offset_tile  = common.node_number_to_cursor_pos(pacman.current_node - common.TILE_DIMS[0]*2)
+                        offset_tile  = common.node_number_to_cursor_pos(pacman.current_tile - common.TILE_DIMS[0]*2)
                     case Direction.DOWN:
-                        offset_tile  = common.node_number_to_cursor_pos(pacman.current_node + common.TILE_DIMS[0]*2)
+                        offset_tile  = common.node_number_to_cursor_pos(pacman.current_tile + common.TILE_DIMS[0]*2)
                     case Direction.LEFT:
-                        offset_tile  = common.node_number_to_cursor_pos(pacman.current_node - 2)
+                        offset_tile  = common.node_number_to_cursor_pos(pacman.current_tile - 2)
                     case Direction.RIGHT:
-                        offset_tile  = common.node_number_to_cursor_pos(pacman.current_node + 2)
+                        offset_tile  = common.node_number_to_cursor_pos(pacman.current_tile + 2)
                     case _:
-                        offset_tile = common.node_number_to_cursor_pos(pacman.current_node)
+                        offset_tile = common.node_number_to_cursor_pos(pacman.current_tile)
 
                 dx: int = offset_tile[0] - blinky_pos[0]
                 dy: int = offset_tile[1] - blinky_pos[1]
@@ -341,8 +335,8 @@ class Ghost:
                         width=1)
 
             case GhostName.CLYDE:
-                pacman_pos: Tuple[int, int] = common.node_number_to_cursor_pos(pacman.current_node)
-                ghost_pos: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_node)
+                pacman_pos: Tuple[int, int] = common.node_number_to_cursor_pos(pacman.current_tile)
+                ghost_pos: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_tile)
 
                 dx: int = pacman_pos[0] - ghost_pos[0]
                 dy: int = pacman_pos[1] - ghost_pos[1]
@@ -350,11 +344,11 @@ class Ghost:
                 tile_dist: float = dist / common.TILE_SIZE[0]
                 
                 if tile_dist >= 8:
-                    self.target_node = pacman.current_node
+                    self.target_node = pacman.current_tile
                 else:
                     self.target_node = self._scatter_target_node
 
-    def smooth_move(self, legal_space: Set[int]) -> None:
+    def smooth_move(self, legal_space: Set[int] | None = None) -> None:
         if self.pixel_pos == self.target_pixel_pos:
             new_node: int = self.move_to_next_node(legal_space)
             target_pos = common.node_number_to_cursor_pos(new_node)
@@ -378,8 +372,8 @@ class Ghost:
         else:
             self.pixel_pos = self.target_pixel_pos[:]
 
-    def move_to_next_node(self, legal_tiles: Set[int]) -> int:
-        ghost_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_node)
+    def move_to_next_node(self, legal_tiles: Set[int] | None = None) -> int:
+        ghost_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_tile)
         target_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.target_node)
 
         # Get tiles above, below, left, and right of ghost
@@ -408,5 +402,5 @@ class Ghost:
                 min_dist = dist
                 move_to_node = common.cursor_pos_to_node_number(move)
 
-        self.current_node = move_to_node if move_to_node != -1 else self.current_node
-        return self.current_node
+        self.current_tile = move_to_node if move_to_node != -1 else self.current_tile
+        return self.current_tile

@@ -70,13 +70,13 @@ def main() -> None:
     # Set of legal tiles (accessible by pacman or the ghosts)
     legal_space: Set[int] = legal_tiles(map_assets)
 
-    pacman: PacMan = PacMan(start_node=574, legal_tiles=legal_space)
+    pacman: PacMan = PacMan(current_tile=574, legal_tiles=legal_space)
 
     ghosts: Dict[str, Ghost] = {
-        'Blinky': Ghost(name=GhostName.BLINKY, current_node=138, scatter_target_node=25),
-        'Pinky': Ghost(name=GhostName.PINKY, current_node=113, scatter_target_node=2),
-        'Inky': Ghost(name=GhostName.INKY, current_node=922, scatter_target_node=979),
-        'Clyde': Ghost(name=GhostName.CLYDE, current_node=897, scatter_target_node=952)
+        'Blinky': Ghost(name=GhostName.BLINKY, current_tile=138, scatter_target_node=25),
+        'Pinky': Ghost(name=GhostName.PINKY, current_tile=113, scatter_target_node=2),
+        'Inky': Ghost(name=GhostName.INKY, current_tile=922, scatter_target_node=979),
+        'Clyde': Ghost(name=GhostName.CLYDE, current_tile=897, scatter_target_node=952)
     }
 
     pause_before_death: bool = False
@@ -99,11 +99,12 @@ def main() -> None:
         for ghost in ghosts.values():
             ghost.choose_target_tile(blinky=ghosts['Blinky'], pacman=pacman)
 
-            if not pacman.is_dying() and not pause_before_death:
+            if not pause_before_death:
                 ghost.smooth_move(legal_space)
             ghost.animate()
             ghost.render(screen)
-            if ghost.current_node == pacman.current_node:
+            
+            if ghost.current_tile == pacman.current_tile:
                 # pacman.slowly_kill()
                 pause_before_death = True
         
