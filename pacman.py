@@ -13,6 +13,34 @@ def legal_tiles(map_assets: List[Tuple[pg.Surface | None, bool]]) -> Set[int]:
             legal_tiles.add(node_num)
     return legal_tiles
 
+def pellets(map_assets: List[Tuple[pg.Surface | None, bool]]) -> Set[int]:
+    pellet_tiles: Set[int] = set()
+
+    for node_num in range(len(map_assets)):
+        # This is a bad way of doing it but I don't want to
+        # recode the map saving functionality
+        if map_assets[node_num][0] \
+            and map_assets[node_num][0].get_at((4, 4)) == pg.Color((255, 185, 175)) \
+            and map_assets[node_num][0].get_at((2, 2)) == pg.Color((0, 0, 0)):
+            # This will give us a direct way to determine
+            # if a tile belongs to the set of legal tiles
+            pellet_tiles.add(node_num)
+    return pellet_tiles
+
+def power_pellets(map_assets: List[Tuple[pg.Surface | None, bool]]) -> Set[int]:
+    pellet_tiles: Set[int] = set()
+
+    for node_num in range(len(map_assets)):
+        # This is a bad way of doing it but I don't want to
+        # recode the map saving functionality
+        if map_assets[node_num][0] \
+            and map_assets[node_num][0].get_at((4, 4)) == pg.Color((255, 185, 175)) \
+            and map_assets[node_num][0].get_at((2, 2)) == pg.Color((255, 185, 175)):
+            # This will give us a direct way to determine
+            # if a tile belongs to the set of legal tiles
+            pellet_tiles.add(node_num)
+    return pellet_tiles
+
 def draw_tile_nums(screen) -> None:
     for tile_num in range(common.TILE_DIMS[0] * common.TILE_DIMS[1]):
         # Prints every so or so node number (degrades performance significantly)
@@ -51,7 +79,7 @@ def load_map_from_file(file_path: str) -> List[Tuple[pg.Surface | None, bool]]:
         map_assets: List[Tuple[pg.Surface | None, bool]] = []
         for line in lines:
             asset_path, is_graph_node = line.strip().split(',')
-            asset: pg.Surface | None = common.load_asset(asset_path) if asset_path and 'pellet' not in asset_path else None
+            asset: pg.Surface | None = common.load_asset(asset_path) if asset_path else None
             map_assets.append((asset, is_graph_node == 'True'))
         return map_assets
 
@@ -66,17 +94,22 @@ def main() -> None:
     # Data concerning the images drawn to the map
     # Each element is a tuple (surface, is_graph_node AKA is legal tile)
     map_assets: List[Tuple[pg.Surface | None, bool]] = load_map_from_file('maps/pacmap.txt')
+    print(len(map_assets))
 
     # Set of legal tiles (accessible by pacman or the ghosts)
     legal_space: Set[int] = legal_tiles(map_assets)
+    dots: Set[int] = pellets(map_assets)
+    energizers: Set[int] = power_pellets(map_assets)
+    dot_count: int = len(dots) + len(energizers)
 
     pacman: PacMan = PacMan(current_tile=742, legal_tiles=legal_space)
+    score: int = 0
 
     ghosts: Dict[str, Ghost] = {
-        'Blinky': Ghost(name=Ghost.Name.BLINKY, current_tile=405, scatter_target_node=25),
-        'Pinky': Ghost(name=Ghost.Name.PINKY, current_tile=405, scatter_target_node=2, direction=Character.Direction.DOWN),
-        'Inky': Ghost(name=Ghost.Name.INKY, current_tile=405, scatter_target_node=979, direction=Character.Direction.UP),
-        'Clyde': Ghost(name=Ghost.Name.CLYDE, current_tile=405, scatter_target_node=952, direction=Character.Direction.UP)
+        'Blinky': Ghost(name=Ghost.Name.BLINKY, current_tile=405, scatter_target_node=25, dot_limit=0),
+        'Pinky': Ghost(name=Ghost.Name.PINKY, current_tile=405, scatter_target_node=2, dot_limit=0, direction=Character.Direction.DOWN),
+        'Inky': Ghost(name=Ghost.Name.INKY, current_tile=405, scatter_target_node=979, dot_limit=30, direction=Character.Direction.UP),
+        'Clyde': Ghost(name=Ghost.Name.CLYDE, current_tile=405, scatter_target_node=952, dot_limit=60, direction=Character.Direction.UP)
     }
 
     pause_before_death: bool = False
@@ -95,6 +128,15 @@ def main() -> None:
             pacman.animate()
         pacman.render(screen)
 
+        if pacman.current_tile in dots:
+            map_assets[pacman.current_tile] = (None, True)
+            dots.remove(pacman.current_tile)
+            score += 10
+        elif pacman.current_tile in energizers:
+            map_assets[pacman.current_tile] = (None, True)
+            energizers.remove(pacman.current_tile)
+            score += 50
+
         # GHOSTS
         for ghost in ghosts.values():
             ghost.choose_target_tile(blinky=ghosts['Blinky'], pacman=pacman)
@@ -104,7 +146,9 @@ def main() -> None:
             ghost.animate()
             ghost.render(screen)
 
-            if ghost.current_tile == pacman.current_tile:
+            ghost.checkDotCount(dot_count - (len(dots) + len(energizers)))
+
+            if not ghost.in_monster_pen() and ghost.current_tile == pacman.current_tile:
                 pause_before_death = True
         
         if pause_before_death:

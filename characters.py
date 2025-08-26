@@ -184,10 +184,11 @@ class Ghost(Character):
         SCATTER = 'scatter'
         FRIGHTENED = 'frightened'
 
-    def __init__(self, name: Name, current_tile: int, scatter_target_node: int, direction: Character.Direction = Character.Direction.NONE):
+    def __init__(self, name: Name, current_tile: int, scatter_target_node: int, dot_limit: int, direction: Character.Direction = Character.Direction.NONE):
         super().__init__(current_tile, animation_speed=6, direction=direction)
         self.name: Ghost.Name = name
         self.target_node: int = -1
+        self.dot_limit: int = dot_limit
 
         self._mode: Ghost.Mode = Ghost.Mode.CHASE
         self._scatter_target_node: int = scatter_target_node
@@ -292,6 +293,13 @@ class Ghost(Character):
         if self._animation_frame == 0:
             self._body_animation_frame = (self._body_animation_frame + 1) % len(self._body_animation)
 
+    def checkDotCount(self, num_dots_eaten: int) -> None:
+        if num_dots_eaten >= self.dot_limit:
+            self._in_monster_pen = False
+
+    def in_monster_pen(self) -> bool:
+        return self._in_monster_pen
+    
     def set_mode(self, mode: 'Ghost.Mode') -> None:
         self._mode = mode
         if self._mode == Ghost.Mode.SCATTER:
