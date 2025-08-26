@@ -2,7 +2,6 @@ from typing import List, Set, Tuple
 from enum import Enum
 import pygame as pg
 import assets
-
 import common
 
 class Character:
@@ -13,9 +12,9 @@ class Character:
         LEFT = 'left'
         RIGHT = 'right'
         
-    def __init__(self, current_tile: int, animation_speed: int):
+    def __init__(self, current_tile: int, animation_speed: int, direction: 'Character.Direction' = Direction.NONE):
         self.current_tile: int = current_tile
-        self.direction: Character.Direction = Character.Direction.NONE
+        self.direction: Character.Direction = direction
         self.color: Tuple[int, int, int, int]
 
         node_pos = common.node_number_to_cursor_pos(self.current_tile)
@@ -185,13 +184,22 @@ class Ghost(Character):
         SCATTER = 'scatter'
         FRIGHTENED = 'frightened'
 
-    def __init__(self, name: Name, current_tile: int, scatter_target_node: int):
-        super().__init__(current_tile, animation_speed=6)
+    def __init__(self, name: Name, current_tile: int, scatter_target_node: int, direction: Character.Direction = Character.Direction.NONE):
+        super().__init__(current_tile, animation_speed=6, direction=direction)
         self.name: Ghost.Name = name
         self.target_node: int = -1
 
         self._mode: Ghost.Mode = Ghost.Mode.CHASE
         self._scatter_target_node: int = scatter_target_node
+
+        self._in_monster_pen: bool = True
+        self._monster_pen_pos: Tuple[int, int]
+        # y direction +/- movement while in pen
+        self._monster_pen_y_oscillation: int = 10
+        # Will be any value between +/- above integer,
+        # is the current oscillation value being added
+        # to the ghost's y position
+        self._oscillation_y_pos: int = 0
 
         self._previous_tile: int = -1
 
@@ -200,6 +208,8 @@ class Ghost(Character):
         match self.name:
             case Ghost.Name.BLINKY:
                 self.color = (255, 0, 0, 255)
+                self._monster_pen_pos = (105, 133)
+                self._in_monster_pen = False
                 self._body_animation = [
                     [
                         common.load_asset(assets.BLINKY1_RIGHT),
@@ -216,6 +226,7 @@ class Ghost(Character):
                 ]
             case Ghost.Name.PINKY:
                 self.color = (255, 192, 203, 255)
+                self._monster_pen_pos = (105, 133)
                 self._body_animation = [
                     [
                         common.load_asset(assets.PINKY1_RIGHT),
@@ -232,6 +243,7 @@ class Ghost(Character):
                 ]
             case Ghost.Name.INKY:
                 self.color = (0, 255, 255, 255)
+                self._monster_pen_pos = (89, 133)
                 self._body_animation = [
                     [
                         common.load_asset(assets.INKY1_RIGHT),
@@ -248,6 +260,7 @@ class Ghost(Character):
                 ]
             case Ghost.Name.CLYDE:
                 self.color = (255, 165, 0, 255)
+                self._monster_pen_pos = (121, 133)
                 self._body_animation = [
                     [
                         common.load_asset(assets.CLYDE1_RIGHT),
@@ -265,7 +278,7 @@ class Ghost(Character):
 
     def render(self, screen: pg.Surface):
         position: Tuple[int, int] = (self.pixel_pos[0] - common.TILE_SIZE[0] + 1, self.pixel_pos[1] - common.TILE_SIZE[1] + 1)
-        common.place_image(screen=screen, image=self.get_image(), position=position)
+        common.place_image(screen=screen, image=self.get_image(), position=position if not self._in_monster_pen else self._monster_pen_pos)
 
         if common.SHOW_TARGET_NODES and self.target_node != -1:
             target_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.target_node)
@@ -285,7 +298,7 @@ class Ghost(Character):
             self.target_node = self._scatter_target_node
 
     def choose_target_tile(self, blinky: 'Ghost', pacman: PacMan) -> None:
-        if self._mode == Ghost.Mode.SCATTER:
+        if self._mode == Ghost.Mode.SCATTER or self._in_monster_pen:
             return
         
         match self.name:
@@ -349,30 +362,51 @@ class Ghost(Character):
                     self.target_node = self._scatter_target_node
 
     def smooth_move(self, legal_space: Set[int] | None = None) -> None:
-        if self.pixel_pos == self.target_pixel_pos:
-            new_node: int = self.move_to_next_node(legal_space)
-            target_pos = common.node_number_to_cursor_pos(new_node)
-            self.target_pixel_pos = (target_pos[0] + common.OFFSET[0], target_pos[1] + common.OFFSET[1])
+        if self._in_monster_pen:
+            # Oscillate the ghost's y position while in the pen
+            if abs(self._oscillation_y_pos) >= self._monster_pen_y_oscillation:
+                # Flip direction
+                if self.direction == Character.Direction.UP:
+                    self.direction = Character.Direction.DOWN
+                elif self.direction == Character.Direction.DOWN:
+                    self.direction = Character.Direction.UP
 
-        dx = self.target_pixel_pos[0] - self.pixel_pos[0]
-        dy = self.target_pixel_pos[1] - self.pixel_pos[1]
-        dist = (dx ** 2 + dy ** 2) ** 0.5
+            if self.direction == Character.Direction.UP:
+                self._oscillation_y_pos -= 1
+            elif self.direction == Character.Direction.DOWN:
+                self._oscillation_y_pos += 1
 
-        if dx < 0:
-            self.direction = Character.Direction.LEFT
-        elif dx > 0:
-            self.direction = Character.Direction.RIGHT
-        elif dy < 0:
-            self.direction = Character.Direction.UP
-        elif dy > 0:
-            self.direction = Character.Direction.DOWN
-
-        if dist > self.speed:
-            self.pixel_pos = (self.pixel_pos[0] + self.speed * dx / dist, self.pixel_pos[1] + self.speed * dy / dist)
+            if self._oscillation_y_pos % 2 == 0:
+                dy: int = -1 if self.direction == Character.Direction.UP else (1 if self.direction == Character.Direction.DOWN else 0)
+                self._monster_pen_pos = (self._monster_pen_pos[0], self._monster_pen_pos[1] + dy)
         else:
-            self.pixel_pos = self.target_pixel_pos[:]
+            if self.pixel_pos == self.target_pixel_pos:
+                new_node: int = self.move_to_next_node(legal_space)
+                target_pos = common.node_number_to_cursor_pos(new_node)
+                self.target_pixel_pos = (target_pos[0] + common.OFFSET[0], target_pos[1] + common.OFFSET[1])
+
+            dx = self.target_pixel_pos[0] - self.pixel_pos[0]
+            dy = self.target_pixel_pos[1] - self.pixel_pos[1]
+            dist = (dx ** 2 + dy ** 2) ** 0.5
+
+            if dx < 0:
+                self.direction = Character.Direction.LEFT
+            elif dx > 0:
+                self.direction = Character.Direction.RIGHT
+            elif dy < 0:
+                self.direction = Character.Direction.UP
+            elif dy > 0:
+                self.direction = Character.Direction.DOWN
+
+            if dist > self.speed:
+                self.pixel_pos = (self.pixel_pos[0] + self.speed * dx / dist, self.pixel_pos[1] + self.speed * dy / dist)
+            else:
+                self.pixel_pos = self.target_pixel_pos[:]
 
     def move_to_next_node(self, legal_tiles: Set[int] | None = None) -> int:
+        if self._in_monster_pen:
+            return self.current_tile
+        
         ghost_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.current_tile)
         target_position: Tuple[int, int] = common.node_number_to_cursor_pos(self.target_node)
 
@@ -386,7 +420,7 @@ class Ghost(Character):
         legal_moves: List[Tuple[int, int]] = []
         for tile in candidate_tiles:
             node_number: int = common.cursor_pos_to_node_number(tile)
-            if node_number in legal_tiles and node_number != self._previous_tile:
+            if legal_tiles and node_number in legal_tiles and node_number != self._previous_tile:
                 legal_moves.append(tile)
         
         self._previous_tile = common.cursor_pos_to_node_number(ghost_position)

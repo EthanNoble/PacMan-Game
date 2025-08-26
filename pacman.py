@@ -70,13 +70,13 @@ def main() -> None:
     # Set of legal tiles (accessible by pacman or the ghosts)
     legal_space: Set[int] = legal_tiles(map_assets)
 
-    pacman: PacMan = PacMan(current_tile=574, legal_tiles=legal_space)
+    pacman: PacMan = PacMan(current_tile=742, legal_tiles=legal_space)
 
     ghosts: Dict[str, Ghost] = {
-        'Blinky': Ghost(name=Ghost.Name.BLINKY, current_tile=138, scatter_target_node=25),
-        'Pinky': Ghost(name=Ghost.Name.PINKY, current_tile=113, scatter_target_node=2),
-        'Inky': Ghost(name=Ghost.Name.INKY, current_tile=922, scatter_target_node=979),
-        'Clyde': Ghost(name=Ghost.Name.CLYDE, current_tile=897, scatter_target_node=952)
+        'Blinky': Ghost(name=Ghost.Name.BLINKY, current_tile=405, scatter_target_node=25),
+        'Pinky': Ghost(name=Ghost.Name.PINKY, current_tile=405, scatter_target_node=2, direction=Character.Direction.DOWN),
+        'Inky': Ghost(name=Ghost.Name.INKY, current_tile=405, scatter_target_node=979, direction=Character.Direction.UP),
+        'Clyde': Ghost(name=Ghost.Name.CLYDE, current_tile=405, scatter_target_node=952, direction=Character.Direction.UP)
     }
 
     pause_before_death: bool = False
